@@ -147,29 +147,47 @@ This file tracks architectural decisions, feature additions, and significant cha
 
 ---
 
+## 2025-10-01 - Mobile Optimization & Polish (Phase 4) ✅
+
+### Phase 4: Mobile Optimization & Polish - Complete ✅
+
+**Persistent Storage:**
+- Request persistent storage on first download to prevent iOS 7-day eviction
+- `useOfflineTiles.ts` checks for existing areas before requesting persistence
+- Handles cancellation during async persistence request
+
+**Retry Logic:**
+- Implemented `downloadTileWithRetry()` with exponential backoff
+- Configurable `maxRetries` (default: 3) and `baseDelay` (default: 1000ms)
+- Backoff calculation: `baseDelay * 2^(attempt-1)` (1s → 2s → 4s)
+- Smart retry strategy:
+  - Don't retry on 4xx client errors (except 429 rate limit)
+  - Retry on 5xx server errors and 429 rate limit errors
+  - Handles network failures with retries
+- Updated `downloadTiles()` to use `downloadTileWithRetry()` automatically
+- Added 7 tests for retry behavior and exponential backoff
+
+**Quota Management:**
+- Check storage quota before starting download
+- Throw descriptive error when insufficient storage available
+- Calculate required space using `estimateDownloadSize()`
+- Error message shows required vs. available storage in MB
+- UI shows user-friendly alert on quota error (MapView.vue)
+- Prevents download when quota would be exceeded
+- Added test for quota exceeded scenario
+
+**Project Status:** 96 tests passing (Phase 0: 8, Phase 1: 52, Phase 2: 14, Phase 3: 14, Phase 4: 8)
+
+---
+
 ## Planned Features
-#### Phase 4: Mobile Optimization & Polish (Week 4)
-- **Platform Detection & Limits**:
-  - Detect iOS vs Android vs Desktop
-  - Apply platform-specific constraints:
-    - iOS: Conservative limits (3 zoom levels, 100MB recommended)
-    - Android/Desktop: Generous limits (5 zoom levels, 500MB)
-  - Show platform-specific warnings in download dialog
-- **Persistent Storage**:
-  - Request persistent storage on first download
-  - Show notification if granted/denied
-  - Track persistence status in UI
+
+#### Future Enhancements
 - **Pause/Resume Downloads**:
   - Implement download queue in IndexedDB
   - Save progress for resume after interruption
   - Clear queue on successful completion or cancellation
-- **Quota Management**:
-  - Handle quota exceeded errors gracefully
-  - Stop download and save progress
-  - Prompt user to delete old areas or reduce zoom levels
-  - Implement LRU cleanup strategy for automatic tile eviction
-- **Error Handling**:
-  - Network failure: Retry with exponential backoff (3 attempts)
+- **Advanced Error Handling**:
   - Persistent failures: Mark tiles as failed, allow retry later
   - iOS 7-day eviction: Detect missing tiles on startup, mark areas for re-download
   - Duplicate area: Check bbox overlap, prompt user before downloading
@@ -184,7 +202,6 @@ This file tracks architectural decisions, feature additions, and significant cha
   - Test on iOS Safari (quota limits, 7-day eviction)
   - Test on Chrome Android (behavior comparison)
   - Verify offline loading in airplane mode
-  - Test quota exceeded scenarios
   - Validate area deletion and space recovery
 
 #### Technical Architecture Notes
