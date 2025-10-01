@@ -1,7 +1,8 @@
 import { ref, type Ref } from 'vue'
-import type { BoundingBox, DownloadProgress } from '@/types'
+import type { BoundingBox, DownloadProgress, DownloadedArea } from '@/types'
 import { calculateDownloadList, estimateDownloadSize } from '@/services/tileCalculator'
 import { downloadTiles } from '@/services/tileDownloader'
+import { useDownloadedAreas } from '@/composables/useDownloadedAreas'
 import type Map from 'ol/Map'
 import { transformExtent } from 'ol/proj'
 
@@ -40,12 +41,14 @@ export function useOfflineTiles(): UseOfflineTilesReturn {
     isCancelled: false,
   })
 
+  const { saveAreaMetadata } = useDownloadedAreas()
+
   let cancelRequested = false
   let downloadStartTime = 0
 
   async function downloadArea(
     bbox: BoundingBox,
-    _areaName: string,
+    areaName: string,
     baseZoom: number,
     additionalZoomLevels: number,
     onProgress?: (progress: DownloadProgress) => void
@@ -116,7 +119,22 @@ export function useOfflineTiles(): UseOfflineTilesReturn {
     downloadProgress.value.isComplete = true
     downloadProgress.value.percentage = 100
 
-    // TODO: Save area metadata to IndexedDB (Phase 3)
+    // Save area metadata to IndexedDB
+    const area: DownloadedArea = {
+      id: areaId,
+      name: areaName,
+      bbox,
+      baseZoom,
+      additionalZoomLevels,
+      minZoom: baseZoom,
+      maxZoom: baseZoom + additionalZoomLevels,
+      tileCount: tiles.length,
+      sizeBytes: downloadProgress.value.bytesDownloaded,
+      downloadedAt: new Date(),
+      tileUrlTemplate: DEFAULT_TILE_URL,
+    }
+
+    await saveAreaMetadata(area)
   }
 
   function cancelDownload(): void {

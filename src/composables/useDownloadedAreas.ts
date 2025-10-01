@@ -1,6 +1,6 @@
 import { get, set, del, keys } from 'idb-keyval'
 import type { DownloadedArea } from '@/types'
-import { getAllStoredTileKeys, deleteTileFromStorage } from '@/services/tileDownloader'
+import { deleteTileFromStorage } from '@/services/tileDownloader'
 import { calculateDownloadList } from '@/services/tileCalculator'
 
 const AREA_KEY_PREFIX = 'area_'
