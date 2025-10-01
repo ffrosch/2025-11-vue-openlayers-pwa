@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import MapComponent from '@/components/MapComponent.vue'
 import DownloadButton from '@/components/DownloadButton.vue'
 import DownloadProgress from '@/components/DownloadProgress.vue'
 import type { MapConfig, BoundingBox } from '@/types'
 import { useOfflineTiles } from '@/composables/useOfflineTiles'
 import type Map from 'ol/Map'
+
+const router = useRouter()
 
 // Baden-Württemberg coordinates: approximately 48.6616°N, 9.3501°E
 // Zoom level 8 provides a good overview of the state
@@ -59,6 +62,10 @@ function handleCancelDownload() {
     showProgress.value = false
   }
 }
+
+function openAreasManager() {
+  router.push({ name: 'offline-areas' })
+}
 </script>
 
 <template>
@@ -74,6 +81,16 @@ function handleCancelDownload() {
       :current-zoom="currentZoom"
       @start-download="handleStartDownload"
     />
+
+    <!-- Areas Manager Button -->
+    <button class="areas-fab" @click="openAreasManager" title="Manage downloaded areas">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="7" height="7"></rect>
+        <rect x="14" y="3" width="7" height="7"></rect>
+        <rect x="14" y="14" width="7" height="7"></rect>
+        <rect x="3" y="14" width="7" height="7"></rect>
+      </svg>
+    </button>
 
     <DownloadProgress
       :progress="downloadProgress"
@@ -92,5 +109,29 @@ function handleCancelDownload() {
   height: 100vh;
   margin: 0;
   padding: 0;
+}
+
+.areas-fab {
+  position: fixed;
+  top: 80px;
+  right: 90px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background-color: #10b981;
+  color: white;
+  border: none;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  z-index: 1000;
+}
+
+.areas-fab:hover {
+  background-color: #059669;
+  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
 }
 </style>
