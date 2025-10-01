@@ -108,31 +108,46 @@ This file tracks architectural decisions, feature additions, and significant cha
 
 ---
 
+## 2025-10-01 - Area Management Complete (Phase 3) ✅
+
+### Phase 3: Area Management - Complete ✅
+
+**Composables Implemented:**
+- **`useDownloadedAreas.ts`** - 14 tests passing
+  - `saveAreaMetadata()` - Persist area info to IndexedDB (called automatically after download)
+  - `getAllAreas()` - Retrieve all areas sorted by date (newest first)
+  - `getAreaById()` - Fetch single area by ID
+  - `deleteArea()` - Remove area metadata and all associated tiles
+  - `getTotalStorageUsed()` - Calculate total bytes across all areas
+
+**UI Components Created:**
+1. **`OfflineAreasManager.vue`** - Area management interface
+   - List view with cards for each downloaded area
+   - Display: area name, download date, zoom range (e.g., "8-10 (3 levels)"), tile count, size
+   - "View on Map" button - emits bbox to center map on area
+   - "Delete" button with confirmation dialog
+   - Empty state with helpful message
+   - Summary footer: total areas, total size, storage percentage
+   - Delete confirmation shows area details and warns about data loss
+
+2. **`OfflineAreasView.vue`** - Full-page area manager
+   - Route: `/offline-areas`
+   - Integrates OfflineAreasManager component
+   - Navigation support (redirects to map with bbox query params)
+
+**Integration:**
+- **`MapView.vue`** updated with Areas Manager button:
+  - Green FAB button (top-right, next to download button)
+  - Links to `/offline-areas` route
+  - Icon: grid/dashboard symbol
+- **`useOfflineTiles.ts`** now saves area metadata automatically after successful downloads
+- **`Router`** updated with `/offline-areas` route
+
+**Project Status:** 88 tests passing (Phase 0: 8, Phase 1: 52, Phase 2: 14, Phase 3: 14)
+
+---
+
 ## Planned Features
-
-#### Phase 3: Area Management (Week 3)
-- **Downloaded Areas Manager Component** (`src/components/OfflineAreasManager.vue`):
-  - List view of downloaded areas with cards showing:
-    - Area name and location icon
-    - Download date
-    - Zoom level range (e.g., "8-11 (4 levels)")
-    - Size in MB and tile count
-    - Actions: "View on Map" (center map to area), "Delete" (with confirmation)
-  - Summary footer: Total areas, total size, storage percentage
-- **Areas Management View** (`src/views/OfflineAreasView.vue`):
-  - Full-page view accessible from navigation or modal
-  - Route: `/offline-areas`
-- **Area Composable** (`src/composables/useDownloadedAreas.ts`):
-  - CRUD operations for downloaded areas
-  - List all areas with metadata
-  - Delete area: Remove all tiles + metadata
-  - View area: Center map to bbox coordinates
-  - Calculate total storage used
-- **Metadata Storage**:
-  - Custom IndexedDB store for `DownloadedArea` objects
-  - Track download date for cleanup policies
-  - Store tile URL template for future re-downloads
-
 #### Phase 4: Mobile Optimization & Polish (Week 4)
 - **Platform Detection & Limits**:
   - Detect iOS vs Android vs Desktop
