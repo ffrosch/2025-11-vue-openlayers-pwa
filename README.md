@@ -1,7 +1,39 @@
 
 # Openlayers PWA App with Vue
 
-- [Claude Best Practices](https://www.anthropic.com/engineering/claude-code-best-practices)
+## Resources
+
+### Development Tools
+- [Claude Code Best Practices](https://www.anthropic.com/engineering/claude-code-best-practices) - Guidelines for working with Claude Code
+
+### Offline Maps & PWA Storage (Research for Offline Tiles Feature)
+
+**Key Resources:**
+
+- **[idb-keyval](https://github.com/jakearchibald/idb-keyval)** - Lightweight IndexedDB wrapper (295-573 bytes)
+  - *Takeaway*: Use this instead of raw IndexedDB for simple key-value storage of tile blobs. Promise-based, supports Blobs natively.
+
+- **[MDN: Storage API](https://developer.mozilla.org/en-US/docs/Web/API/Storage_API)** - Browser storage quotas and persistence
+  - *Takeaway*: iOS Safari IndexedDB quota: 500MB-1GB (vs 50MB Cache API). Use `navigator.storage.estimate()` to monitor usage. Request persistence with `navigator.storage.persist()`.
+
+- **[MDN: IndexedDB API](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API)** - Client-side storage for structured data
+  - *Takeaway*: Store tile Blobs directly (not Base64). Use meaningful keys like `tile_${z}_${x}_${y}`. Don't index binary fields for performance.
+
+- **[OpenLayers Tile Loading](https://openlayers.org/en/latest/apidoc/module-ol_source_XYZ.html)** - Custom tile load functions
+  - *Takeaway*: Use `tileLoadFunction` to intercept tile loads. Check IndexedDB first, fallback to network. Store fetched tiles for offline use.
+
+- **[Browser Storage Quotas (web.dev)](https://web.dev/articles/storage-for-the-web)** - Cross-browser storage limits
+  - *Takeaway*: Chrome/Desktop: 60-80% of disk. Firefox: 10GB max. Safari: 1GB with prompts. iOS: Aggressive 7-day eviction policy if app unused.
+
+- **[PWA Maps Example (GitHub)](https://github.com/reyemtm/pwa-maps)** - Real-world offline maps implementation
+  - *Takeaway*: Reference for tile preloading strategies and offline-first architecture patterns.
+
+**Storage Strategy Summary:**
+- **IndexedDB over Cache API**: 10x larger quota on iOS (500MB vs 50MB)
+- **Platform Limits**: iOS (conservative: 3 zoom levels), Android (generous: 5+ zoom levels)
+- **Tile Format**: Store as Blobs (binary), average 20KB per OSM tile
+- **Download Strategy**: Batch 6 concurrent (browser limit), retry 3x with exponential backoff
+- **Offline Loading**: IndexedDB → network → placeholder (graceful degradation)
 
 ## Initial setup
 
