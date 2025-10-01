@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> **Note:** See [CHANGELOG.md](CHANGELOG.md) for a detailed history of architectural changes, features, and component additions that provide additional context for understanding the codebase evolution.
+
 ## Project Overview
 
 This is a Vue 3 + TypeScript PWA (Progressive Web App) using Vite as the build tool and Bun as the package manager. The project is configured for deployment to GitHub Pages and includes PWA capabilities with offline support and automatic updates.
@@ -42,6 +44,7 @@ This is a Vue 3 + TypeScript PWA (Progressive Web App) using Vite as the build t
 - Always use TypeScript - keep central Interface and Type definitions file
 - Use Vue Composition API exclusively, not Options API
 - Use `<script setup lang="ts">` syntax for all Vue components
+- **Always use `@/` alias for imports** (e.g., `import { Foo } from '@/types'`, `import Bar from '@/components/Bar.vue'`)
 
 ## Project Structure
 

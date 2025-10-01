@@ -1,6 +1,8 @@
 
 # Openlayers PWA App with Vue
 
+- [Claude Best Practices](https://www.anthropic.com/engineering/claude-code-best-practices)
+
 ## Initial setup
 
 Install dependencies (make sure you are already in your project folder!)
