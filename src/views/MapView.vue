@@ -5,6 +5,7 @@ import DownloadButton from '@/components/DownloadButton.vue'
 import DownloadProgress from '@/components/DownloadProgress.vue'
 import type { MapConfig, BoundingBox } from '@/types'
 import { useOfflineTiles } from '@/composables/useOfflineTiles'
+import type Map from 'ol/Map'
 
 // Baden-Württemberg coordinates: approximately 48.6616°N, 9.3501°E
 // Zoom level 8 provides a good overview of the state
@@ -13,16 +14,30 @@ const mapConfig: MapConfig = {
   zoom: 8
 }
 
-const currentExtent = ref<BoundingBox | null>({
-  west: 8.0,
-  south: 47.5,
-  east: 10.5,
-  north: 49.8,
-})
+const mapInstance = ref<Map | null>(null)
+const currentExtent = ref<BoundingBox | null>(null)
 const currentZoom = ref(mapConfig.zoom)
 const showProgress = ref(false)
 
-const { downloadArea, downloadProgress, cancelDownload } = useOfflineTiles()
+const { downloadArea, downloadProgress, cancelDownload, getCurrentMapExtent } = useOfflineTiles()
+
+function handleMapReady(map: Map) {
+  mapInstance.value = map
+  updateMapInfo()
+}
+
+function handleMoveEnd({ map }: { map: Map }) {
+  mapInstance.value = map
+  updateMapInfo()
+}
+
+function updateMapInfo() {
+  if (!mapInstance.value) return
+
+  currentExtent.value = getCurrentMapExtent(mapInstance.value as Map)
+  const zoom = mapInstance.value.getView().getZoom()
+  currentZoom.value = zoom ? Math.round(zoom) : mapConfig.zoom
+}
 
 async function handleStartDownload(payload: { bbox: BoundingBox; name: string; baseZoom: number; additionalLevels: number }) {
   showProgress.value = true
@@ -48,7 +63,11 @@ function handleCancelDownload() {
 
 <template>
   <div class="map-view">
-    <MapComponent :config="mapConfig" />
+    <MapComponent
+      :config="mapConfig"
+      @map-ready="handleMapReady"
+      @move-end="handleMoveEnd"
+    />
 
     <DownloadButton
       :current-extent="currentExtent"

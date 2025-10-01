@@ -16,6 +16,11 @@ interface Props {
 
 const props = defineProps<Props>()
 
+const emit = defineEmits<{
+  (e: 'mapReady', map: Map): void
+  (e: 'moveEnd', payload: { map: Map }): void
+}>()
+
 const mapContainer = ref<HTMLDivElement | null>(null)
 let map: Map | null = null
 
@@ -97,6 +102,16 @@ onMounted(() => {
       center: fromLonLat(props.config.center),
       zoom: props.config.zoom,
     }),
+  })
+
+  // Emit map ready event
+  emit('mapReady', map)
+
+  // Listen to move end events
+  map.on('moveend', () => {
+    if (map) {
+      emit('moveEnd', { map })
+    }
   })
 })
 
