@@ -62,38 +62,48 @@ This file tracks architectural decisions, feature additions, and significant cha
 
 ---
 
-## Planned Features
+## 2025-10-01 - Download Functionality Complete (Phase 2) ✅
 
-#### Phase 2: Download Functionality (Week 2)
-- **Download Button Component** (`src/components/DownloadButton.vue`):
-  - Floating action button (FAB) on map (top-right corner)
-  - Opens download dialog with current extent calculation
-- **Download Dialog**:
-  - Show current map extent (auto-calculated bounding box)
-  - Display current zoom level
-  - User input: Area name (auto-filled with date/location)
-  - User input: Additional zoom levels slider (0-5, warn if >3 on iOS)
-  - Real-time calculations:
-    - Total tiles to download
-    - Estimated size (avg 20KB per tile)
-    - Estimated download time (based on network speed)
-    - Storage impact (percentage of quota)
-  - Platform-specific limits:
-    - iOS: Max 3 additional zoom levels recommended, 2000 tiles hard limit
-    - Android/Desktop: Max 5 zoom levels, 10000 tiles limit
-- **Download Progress Component** (`src/components/DownloadProgress.vue`):
-  - Full-screen overlay (non-dismissible during download)
-  - Progress ring/bar with percentage
-  - Statistics: "Downloading tile X of Y", speed, ETA, size downloaded
-  - Pause/Cancel buttons
-  - Background mode: Minimize to notification (if supported)
-- **Download Logic** (`src/composables/useOfflineTiles.ts`):
-  - Batch download (6 tiles concurrent - browser connection limit)
-  - Use `Promise.allSettled` for graceful failure handling
-  - Retry failed tiles (3 attempts with exponential backoff)
-  - Progress updates after each batch
-  - Save area metadata after successful download
-  - Cleanup on cancellation
+### Phase 2: Download Functionality - Complete ✅
+
+**Composables Implemented:**
+- **`useOfflineTiles.ts`** - 14 tests passing
+  - `downloadArea()` - Orchestrate batch tile downloads with progress tracking
+  - `cancelDownload()` - Cancel in-progress downloads
+  - `calculateDownloadEstimate()` - Preview tile count and size before download
+  - `getCurrentMapExtent()` - Get current map bounding box
+  - ETA calculation based on download speed
+  - Graceful failure handling (track failed tiles)
+
+**UI Components Created:**
+1. **`DownloadButton.vue`** - Floating Action Button with download dialog
+   - Auto-calculated extent from map viewport
+   - Area name input (auto-filled with date)
+   - Additional zoom levels slider (0-5)
+   - Real-time tile count and size estimates
+   - Platform detection: iOS warnings for >3 zoom levels
+   - Tile count limits: 2000 (iOS), 10000 (Android/Desktop)
+   - Formatted size display in MB
+
+2. **`DownloadProgress.vue`** - Full-screen progress overlay
+   - Circular progress ring with percentage
+   - Download statistics: tiles downloaded/total, speed, ETA
+   - Failed tile tracking
+   - Bytes downloaded display
+   - Cancel button (changes to Close when complete)
+
+**Integration:**
+- **`MapView.vue`** updated with complete download workflow:
+  - Download button positioned as FAB (top-right)
+  - Progress overlay during downloads
+  - Cancellation and completion handling
+  - Static extent (Baden-Württemberg region) as proof of concept
+
+**Project Status:** 74 tests passing (Phase 0: 8, Phase 1: 52, Phase 2: 14)
+
+---
+
+## Planned Features
 
 #### Phase 3: Area Management (Week 3)
 - **Downloaded Areas Manager Component** (`src/components/OfflineAreasManager.vue`):
