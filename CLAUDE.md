@@ -66,6 +66,42 @@ src/
 2. TypeScript must be a peer dependency (not dev dependency) to enable type imports in Vue `defineProps`
 3. The project uses Bun's `--bun` flag for faster Vite execution
 
+### Git Commit Guidelines
+
+**Use Conventional Commits format** for all commit messages:
+
+```
+<type>: <description>
+
+[optional body]
+
+[optional footer]
+```
+
+**Common types:**
+- `feat`: New feature for the user
+- `fix`: Bug fix
+- `docs`: Documentation changes only
+- `style`: Code style changes (formatting, missing semicolons, etc.)
+- `refactor`: Code refactoring without changing functionality
+- `perf`: Performance improvements
+- `test`: Adding or updating tests
+- `chore`: Changes to build process, tooling, dependencies
+
+**Examples:**
+- `feat: add user authentication`
+- `fix: resolve map rendering issue on mobile`
+- `docs: update installation instructions`
+- `refactor: simplify map component logic`
+
+**Guidelines:**
+- Keep subject line under 50 characters
+- Use imperative mood ("add" not "added" or "adds")
+- Don't capitalize first letter of subject
+- No period at the end of subject
+- Separate subject from body with blank line
+- Use body to explain what and why, not how
+
 ## PWA Development Notes
 
 - Service worker registration happens in `PWABadge.vue` via `useRegisterSW` from `virtual:pwa-register/vue`
