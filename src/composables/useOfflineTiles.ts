@@ -1,5 +1,5 @@
 import { ref, type Ref } from 'vue'
-import type { BoundingBox, DownloadProgress, DownloadedArea, TileCoord } from '@/types'
+import type { BoundingBox, DownloadProgress } from '@/types'
 import { calculateDownloadList, estimateDownloadSize } from '@/services/tileCalculator'
 import { downloadTiles } from '@/services/tileDownloader'
 import type Map from 'ol/Map'
@@ -45,7 +45,7 @@ export function useOfflineTiles(): UseOfflineTilesReturn {
 
   async function downloadArea(
     bbox: BoundingBox,
-    areaName: string,
+    _areaName: string,
     baseZoom: number,
     additionalZoomLevels: number,
     onProgress?: (progress: DownloadProgress) => void
@@ -146,9 +146,10 @@ export function useOfflineTiles(): UseOfflineTilesReturn {
     const extent = view.calculateExtent(map.getSize())
 
     // Transform from Web Mercator (EPSG:3857) to WGS84 (EPSG:4326)
-    const [west, south, east, north] = transformExtent(extent, 'EPSG:3857', 'EPSG:4326')
+    const transformed = transformExtent(extent, 'EPSG:3857', 'EPSG:4326')
+    const [west, south, east, north] = transformed
 
-    return { west, south, east, north }
+    return { west: west!, south: south!, east: east!, north: north! }
   }
 
   return {
