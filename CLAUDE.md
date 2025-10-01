@@ -46,6 +46,12 @@ This is a Vue 3 + TypeScript PWA (Progressive Web App) using Vite as the build t
 - Use `<script setup lang="ts">` syntax for all Vue components
 - **Always use `@/` alias for imports** (e.g., `import { Foo } from '@/types'`, `import Bar from '@/components/Bar.vue'`)
 
+## Documentation Guidelines
+
+- Keep CLAUDE.md and CHANGELOG.md current
+- in CHANGELOG.md make sure to remove planned features after they are done and log a summary for the implemented feature instead
+- in CLAUDE.md make sure to keep "Project Structure" and "Common Commands" in sync with the current state of the repo
+
 ## Project Structure
 
 ```
