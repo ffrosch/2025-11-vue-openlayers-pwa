@@ -1,9 +1,15 @@
 import { get, set, del, keys } from 'idb-keyval'
-import type { DownloadedArea } from '@/types'
-import { deleteTileFromStorage } from '@/services/tileDownloader'
+import type { DownloadedArea, TileCoord } from '@/types'
+import { deleteTileFromStorage, getAllStoredTileKeys } from '@/services/tileDownloader'
 import { calculateDownloadList } from '@/services/tileCalculator'
 
 const AREA_KEY_PREFIX = 'area_'
+
+export interface OrphanedTilesInfo {
+  count: number
+  estimatedSizeBytes: number
+  tileKeys: string[]
+}
 
 export interface UseDownloadedAreasReturn {
   saveAreaMetadata: (area: DownloadedArea) => Promise<void>
@@ -11,6 +17,8 @@ export interface UseDownloadedAreasReturn {
   getAreaById: (areaId: string) => Promise<DownloadedArea | null>
   deleteArea: (areaId: string) => Promise<void>
   getTotalStorageUsed: () => Promise<number>
+  getOrphanedTiles: () => Promise<OrphanedTilesInfo>
+  deleteOrphanedTiles: () => Promise<void>
 }
 
 export function useDownloadedAreas(): UseDownloadedAreasReturn {
@@ -92,11 +100,72 @@ export function useDownloadedAreas(): UseDownloadedAreasReturn {
     return areas.reduce((total, area) => total + area.sizeBytes, 0)
   }
 
+  /**
+   * Get information about orphaned tiles (tiles not associated with any area)
+   */
+  async function getOrphanedTiles(): Promise<OrphanedTilesInfo> {
+    // Get all stored tile keys
+    const allTileKeys = await getAllStoredTileKeys()
+
+    // Get all areas
+    const areas = await getAllAreas()
+
+    // Build a set of all tile keys that belong to areas
+    const associatedTileKeys = new Set<string>()
+    for (const area of areas) {
+      const tiles = calculateDownloadList(area.bbox, area.baseZoom, area.additionalZoomLevels)
+      for (const tile of tiles) {
+        const key = `tile_${tile.z}_${tile.x}_${tile.y}`
+        associatedTileKeys.add(key)
+      }
+    }
+
+    // Find orphaned tiles (tiles that exist but aren't in any area)
+    const orphanedKeys = allTileKeys.filter(key => !associatedTileKeys.has(key))
+
+    console.log(allTileKeys)
+    console.log(areas)
+    console.log(associatedTileKeys)
+    console.log(orphanedKeys)
+
+    // Estimate size (20KB per tile)
+    const estimatedSizeBytes = orphanedKeys.length * 20 * 1024
+
+    return {
+      count: orphanedKeys.length,
+      estimatedSizeBytes,
+      tileKeys: orphanedKeys,
+    }
+  }
+
+  /**
+   * Delete all orphaned tiles (tiles not associated with any area)
+   */
+  async function deleteOrphanedTiles(): Promise<void> {
+    const orphanedInfo = await getOrphanedTiles()
+
+    // Parse tile keys and delete them
+    for (const key of orphanedInfo.tileKeys) {
+      // Parse key format: tile_z_x_y
+      const parts = key.split('_')
+      if (parts.length === 4) {
+        const tile: TileCoord = {
+          z: parseInt(parts[1]!),
+          x: parseInt(parts[2]!),
+          y: parseInt(parts[3]!),
+        }
+        await deleteTileFromStorage(tile)
+      }
+    }
+  }
+
   return {
     saveAreaMetadata,
     getAllAreas,
     getAreaById,
     deleteArea,
     getTotalStorageUsed,
+    getOrphanedTiles,
+    deleteOrphanedTiles,
   }
 }

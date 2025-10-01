@@ -379,4 +379,193 @@ describe('useDownloadedAreas', () => {
       expect(retrieved?.name).toBe('Test Area')
     })
   })
+
+  describe('getOrphanedTiles', () => {
+    it('should return empty info when no tiles exist', async () => {
+      const { getOrphanedTiles } = useDownloadedAreas()
+
+      const orphaned = await getOrphanedTiles()
+
+      expect(orphaned.count).toBe(0)
+      expect(orphaned.estimatedSizeBytes).toBe(0)
+      expect(orphaned.tileKeys).toEqual([])
+    })
+
+    it('should return empty info when all tiles belong to areas', async () => {
+      const { saveAreaMetadata, getOrphanedTiles } = useDownloadedAreas()
+      const { saveTileToStorage } = await import('@/services/tileDownloader')
+
+      const bbox = {
+        west: 9.0,
+        south: 48.5,
+        east: 9.1,
+        north: 48.6,
+      }
+
+      const area: DownloadedArea = {
+        id: 'area-1',
+        name: 'Test Area',
+        bbox,
+        baseZoom: 8,
+        additionalZoomLevels: 0,
+        minZoom: 8,
+        maxZoom: 8,
+        tileCount: 1,
+        sizeBytes: 20480,
+        downloadedAt: new Date().toISOString(),
+        tileUrlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      }
+
+      await saveAreaMetadata(area)
+
+      // Save tiles that belong to this area
+      const { calculateDownloadList } = await import('@/services/tileCalculator')
+      const tiles = calculateDownloadList(bbox, 8, 0)
+      const blob = new Blob(['tile data'], { type: 'image/png' })
+      for (const tile of tiles) {
+        await saveTileToStorage(tile, blob)
+      }
+
+      const orphaned = await getOrphanedTiles()
+
+      expect(orphaned.count).toBe(0)
+    })
+
+    it('should detect orphaned tiles', async () => {
+      const { getOrphanedTiles } = useDownloadedAreas()
+      const { saveTileToStorage } = await import('@/services/tileDownloader')
+
+      // Save some orphaned tiles (not associated with any area)
+      const blob = new Blob(['tile data'], { type: 'image/png' })
+      await saveTileToStorage({ z: 10, x: 100, y: 200 }, blob)
+      await saveTileToStorage({ z: 10, x: 101, y: 201 }, blob)
+
+      const orphaned = await getOrphanedTiles()
+
+      expect(orphaned.count).toBe(2)
+      expect(orphaned.estimatedSizeBytes).toBe(2 * 20 * 1024) // 2 tiles * 20KB
+      expect(orphaned.tileKeys).toHaveLength(2)
+      expect(orphaned.tileKeys).toContain('tile_10_100_200')
+      expect(orphaned.tileKeys).toContain('tile_10_101_201')
+    })
+
+    it('should detect tiles outside of area bounds as orphaned', async () => {
+      const { saveAreaMetadata, getOrphanedTiles } = useDownloadedAreas()
+      const { saveTileToStorage } = await import('@/services/tileDownloader')
+
+      const bbox = {
+        west: 9.0,
+        south: 48.5,
+        east: 9.1,
+        north: 48.6,
+      }
+
+      const area: DownloadedArea = {
+        id: 'area-1',
+        name: 'Test Area',
+        bbox,
+        baseZoom: 8,
+        additionalZoomLevels: 0,
+        minZoom: 8,
+        maxZoom: 8,
+        tileCount: 1,
+        sizeBytes: 20480,
+        downloadedAt: new Date().toISOString(),
+        tileUrlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      }
+
+      await saveAreaMetadata(area)
+
+      // Save tiles for the area
+      const { calculateDownloadList } = await import('@/services/tileCalculator')
+      const tiles = calculateDownloadList(bbox, 8, 0)
+      const blob = new Blob(['tile data'], { type: 'image/png' })
+      for (const tile of tiles) {
+        await saveTileToStorage(tile, blob)
+      }
+
+      // Save some orphaned tiles (outside the area)
+      await saveTileToStorage({ z: 10, x: 999, y: 999 }, blob)
+
+      const orphaned = await getOrphanedTiles()
+
+      expect(orphaned.count).toBe(1)
+      expect(orphaned.tileKeys).toContain('tile_10_999_999')
+    })
+  })
+
+  describe('deleteOrphanedTiles', () => {
+    it('should delete all orphaned tiles', async () => {
+      const { deleteOrphanedTiles, getOrphanedTiles } = useDownloadedAreas()
+      const { saveTileToStorage, getAllStoredTileKeys } = await import('@/services/tileDownloader')
+
+      // Save some orphaned tiles
+      const blob = new Blob(['tile data'], { type: 'image/png' })
+      await saveTileToStorage({ z: 10, x: 100, y: 200 }, blob)
+      await saveTileToStorage({ z: 10, x: 101, y: 201 }, blob)
+
+      // Verify they exist
+      const beforeKeys = await getAllStoredTileKeys()
+      expect(beforeKeys).toHaveLength(2)
+
+      // Delete orphaned tiles
+      await deleteOrphanedTiles()
+
+      // Verify they're gone
+      const afterKeys = await getAllStoredTileKeys()
+      expect(afterKeys).toHaveLength(0)
+
+      const orphaned = await getOrphanedTiles()
+      expect(orphaned.count).toBe(0)
+    })
+
+    it('should not delete tiles that belong to areas', async () => {
+      const { saveAreaMetadata, deleteOrphanedTiles } = useDownloadedAreas()
+      const { saveTileToStorage, getAllStoredTileKeys } = await import('@/services/tileDownloader')
+
+      const bbox = {
+        west: 9.0,
+        south: 48.5,
+        east: 9.1,
+        north: 48.6,
+      }
+
+      const area: DownloadedArea = {
+        id: 'area-1',
+        name: 'Test Area',
+        bbox,
+        baseZoom: 8,
+        additionalZoomLevels: 0,
+        minZoom: 8,
+        maxZoom: 8,
+        tileCount: 1,
+        sizeBytes: 20480,
+        downloadedAt: new Date().toISOString(),
+        tileUrlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      }
+
+      await saveAreaMetadata(area)
+
+      // Save tiles for the area
+      const { calculateDownloadList } = await import('@/services/tileCalculator')
+      const tiles = calculateDownloadList(bbox, 8, 0)
+      const blob = new Blob(['tile data'], { type: 'image/png' })
+      for (const tile of tiles) {
+        await saveTileToStorage(tile, blob)
+      }
+
+      // Save some orphaned tiles
+      await saveTileToStorage({ z: 10, x: 999, y: 999 }, blob)
+
+      const beforeKeys = await getAllStoredTileKeys()
+      const expectedAreaTileCount = tiles.length
+
+      // Delete orphaned tiles
+      await deleteOrphanedTiles()
+
+      // Verify only orphaned tiles were deleted
+      const afterKeys = await getAllStoredTileKeys()
+      expect(afterKeys).toHaveLength(expectedAreaTileCount)
+    })
+  })
 })
