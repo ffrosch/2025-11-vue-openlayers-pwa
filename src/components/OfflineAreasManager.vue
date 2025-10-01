@@ -33,8 +33,8 @@ const storagePercentage = computed(() => {
   return Math.round((totalStorage.value / storageInfo.value.quota) * 100)
 })
 
-function formatDate(date: Date): string {
-  const d = new Date(date)
+function formatDate(dateString: string): string {
+  const d = new Date(dateString)
   return d.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',

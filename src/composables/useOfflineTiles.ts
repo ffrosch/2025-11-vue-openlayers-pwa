@@ -155,7 +155,7 @@ export function useOfflineTiles(): UseOfflineTilesReturn {
       maxZoom: baseZoom + additionalZoomLevels,
       tileCount: tiles.length,
       sizeBytes: downloadProgress.value.bytesDownloaded,
-      downloadedAt: new Date(),
+      downloadedAt: new Date().toISOString(),
       tileUrlTemplate: DEFAULT_TILE_URL,
     }
 

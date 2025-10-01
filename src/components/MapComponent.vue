@@ -7,7 +7,7 @@ import OSM from 'ol/source/OSM'
 import { fromLonLat } from 'ol/proj'
 import type { Tile as OLTile } from 'ol'
 import type { MapConfig } from '@/types'
-import { getTileFromStorage, saveTileToStorage } from '@/services/tileDownloader'
+import { getAllStoredTileKeys, getTileFromStorage, saveTileToStorage } from '@/services/tileDownloader'
 import 'ol/ol.css'
 
 interface Props {

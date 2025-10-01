@@ -19,7 +19,17 @@ export function useDownloadedAreas(): UseDownloadedAreasReturn {
    */
   async function saveAreaMetadata(area: DownloadedArea): Promise<void> {
     const key = `${AREA_KEY_PREFIX}${area.id}`
-    await set(key, area)
+      const areaToStore = {
+        ...area,
+        // Ensure downloadedAt is stored as ISO string
+        downloadedAt: typeof area.downloadedAt === 'string'
+          ? area.downloadedAt
+          : new Date(area.downloadedAt).toISOString(),
+        // Make sure object is no proxy, which would fail
+        bbox: { ...area.bbox }
+      }
+      
+    await set(key, areaToStore)
   }
 
   /**
@@ -38,11 +48,8 @@ export function useDownloadedAreas(): UseDownloadedAreasReturn {
     }
 
     // Sort by downloadedAt descending (newest first)
-    return areas.sort((a, b) => {
-      const dateA = new Date(a.downloadedAt).getTime()
-      const dateB = new Date(b.downloadedAt).getTime()
-      return dateB - dateA
-    })
+    // ISO 8601 strings can be compared directly
+    return areas.sort((a, b) => b.downloadedAt.localeCompare(a.downloadedAt))
   }
 
   /**

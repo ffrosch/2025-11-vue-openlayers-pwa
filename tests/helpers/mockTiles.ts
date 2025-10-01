@@ -50,7 +50,7 @@ export function createMockDownloadedArea(
     maxZoom: 10,
     tileCount: 100,
     sizeBytes: 2048000, // ~2 MB
-    downloadedAt: new Date(),
+    downloadedAt: new Date().toISOString(),
     tileUrlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
     ...overrides,
   }

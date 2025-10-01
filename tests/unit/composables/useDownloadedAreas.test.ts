@@ -22,7 +22,7 @@ describe('useDownloadedAreas', () => {
         maxZoom: 10,
         tileCount: 100,
         sizeBytes: 2048000,
-        downloadedAt: new Date(),
+        downloadedAt: new Date().toISOString(),
         tileUrlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
       }
 
@@ -46,7 +46,7 @@ describe('useDownloadedAreas', () => {
         maxZoom: 9,
         tileCount: 50,
         sizeBytes: 1024000,
-        downloadedAt: new Date(),
+        downloadedAt: new Date().toISOString(),
         tileUrlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
       }
 
@@ -66,7 +66,7 @@ describe('useDownloadedAreas', () => {
 
     it('should store downloadedAt timestamp', async () => {
       const { saveAreaMetadata, getAreaById } = useDownloadedAreas()
-      const now = new Date()
+      const now = new Date().toISOString()
       const area: DownloadedArea = {
         id: 'area-1',
         name: 'Test Area',
@@ -84,7 +84,7 @@ describe('useDownloadedAreas', () => {
       await saveAreaMetadata(area)
 
       const retrieved = await getAreaById('area-1')
-      expect(retrieved?.downloadedAt).toBeDefined()
+      expect(retrieved?.downloadedAt).toBe(now)
     })
   })
 
@@ -109,7 +109,7 @@ describe('useDownloadedAreas', () => {
         maxZoom: 9,
         tileCount: 50,
         sizeBytes: 1024000,
-        downloadedAt: new Date(),
+        downloadedAt: new Date().toISOString(),
         tileUrlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
       }
 
@@ -123,7 +123,7 @@ describe('useDownloadedAreas', () => {
         maxZoom: 11,
         tileCount: 200,
         sizeBytes: 4096000,
-        downloadedAt: new Date(),
+        downloadedAt: new Date().toISOString(),
         tileUrlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
       }
 
@@ -152,7 +152,7 @@ describe('useDownloadedAreas', () => {
         maxZoom: 9,
         tileCount: 50,
         sizeBytes: 1024000,
-        downloadedAt: yesterday,
+        downloadedAt: yesterday.toISOString(),
         tileUrlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
       }
 
@@ -166,7 +166,7 @@ describe('useDownloadedAreas', () => {
         maxZoom: 11,
         tileCount: 200,
         sizeBytes: 4096000,
-        downloadedAt: now,
+        downloadedAt: now.toISOString(),
         tileUrlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
       }
 
@@ -193,7 +193,7 @@ describe('useDownloadedAreas', () => {
         maxZoom: 9,
         tileCount: 50,
         sizeBytes: 1024000,
-        downloadedAt: new Date(),
+        downloadedAt: new Date().toISOString(),
         tileUrlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
       }
 
@@ -226,7 +226,7 @@ describe('useDownloadedAreas', () => {
         maxZoom: 8,
         tileCount: 1,
         sizeBytes: 20480,
-        downloadedAt: new Date(),
+        downloadedAt: new Date().toISOString(),
         tileUrlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
       }
 
@@ -279,7 +279,7 @@ describe('useDownloadedAreas', () => {
         maxZoom: 9,
         tileCount: 50,
         sizeBytes: 10 * 1024 * 1024, // 10 MB
-        downloadedAt: new Date(),
+        downloadedAt: new Date().toISOString(),
         tileUrlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
       }
 
@@ -293,7 +293,7 @@ describe('useDownloadedAreas', () => {
         maxZoom: 11,
         tileCount: 200,
         sizeBytes: 25 * 1024 * 1024, // 25 MB
-        downloadedAt: new Date(),
+        downloadedAt: new Date().toISOString(),
         tileUrlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
       }
 
@@ -317,7 +317,7 @@ describe('useDownloadedAreas', () => {
         maxZoom: 9,
         tileCount: 50,
         sizeBytes: 10 * 1024 * 1024,
-        downloadedAt: new Date(),
+        downloadedAt: new Date().toISOString(),
         tileUrlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
       }
 
@@ -331,7 +331,7 @@ describe('useDownloadedAreas', () => {
         maxZoom: 11,
         tileCount: 200,
         sizeBytes: 25 * 1024 * 1024,
-        downloadedAt: new Date(),
+        downloadedAt: new Date().toISOString(),
         tileUrlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
       }
 
@@ -366,7 +366,7 @@ describe('useDownloadedAreas', () => {
         maxZoom: 9,
         tileCount: 50,
         sizeBytes: 1024000,
-        downloadedAt: new Date(),
+        downloadedAt: new Date().toISOString(),
         tileUrlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
       }
 

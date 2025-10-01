@@ -32,7 +32,7 @@ export interface DownloadedArea {
   maxZoom: number
   tileCount: number
   sizeBytes: number
-  downloadedAt: Date
+  downloadedAt: string // ISO 8601 string
   tileUrlTemplate: string
 }
 
