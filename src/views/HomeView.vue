@@ -5,7 +5,7 @@ import PWABadge from '@/components/PWABadge.vue'
 </script>
 
 <template>
-  <div>
+  <div class="flex justify-center">
     <a href="https://vite.dev" target="_blank">
       <img src="/favicon.svg" class="logo" alt="2025-11-vue-openlayers-pwa logo" />
     </a>
