@@ -17,6 +17,7 @@ beforeEach(async () => {
 // Mock navigator.storage API
 Object.defineProperty(global.navigator, 'storage', {
   writable: true,
+  configurable: true,
   value: {
     estimate: async () => ({
       usage: 1024 * 1024 * 50, // 50 MB used
