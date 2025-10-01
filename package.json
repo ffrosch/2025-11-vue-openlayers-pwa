@@ -10,6 +10,7 @@
     "typecheck": "vue-tsc -b"
   },
   "dependencies": {
+    "ol": "^10.6.1",
     "tailwindcss": "^4.1.13",
     "vue": "^3.5.13"
   },
