@@ -43,7 +43,7 @@ export function useOfflineTiles(): UseOfflineTilesReturn {
   })
 
   const { saveAreaMetadata, getAllAreas } = useDownloadedAreas()
-  const { requestPersistence } = useStorageQuota()
+  const { requestPersistence, updateStorageInfo, storageInfo } = useStorageQuota()
 
   let cancelRequested = false
   let downloadStartTime = 0
@@ -73,6 +73,16 @@ export function useOfflineTiles(): UseOfflineTilesReturn {
       bytesDownloaded: 0,
       isComplete: false,
       isCancelled: false,
+    }
+
+    // Check storage quota before download
+    await updateStorageInfo()
+    const estimatedSize = estimateDownloadSize(tiles)
+    if (storageInfo.value.available < estimatedSize) {
+      throw new Error(
+        `Insufficient storage: Need ${Math.ceil(estimatedSize / 1024 / 1024)}MB, ` +
+        `but only ${Math.ceil(storageInfo.value.available / 1024 / 1024)}MB available`
+      )
     }
 
     // Request persistent storage on first download

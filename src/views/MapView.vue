@@ -44,15 +44,24 @@ function updateMapInfo() {
 
 async function handleStartDownload(payload: { bbox: BoundingBox; name: string; baseZoom: number; additionalLevels: number }) {
   showProgress.value = true
-  await downloadArea(
-    payload.bbox,
-    payload.name,
-    payload.baseZoom,
-    payload.additionalLevels,
-    () => {
-      // Progress updates are automatically tracked in downloadProgress ref
+  try {
+    await downloadArea(
+      payload.bbox,
+      payload.name,
+      payload.baseZoom,
+      payload.additionalLevels,
+      () => {
+        // Progress updates are automatically tracked in downloadProgress ref
+      }
+    )
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('Insufficient storage')) {
+      alert(`Download failed: ${error.message}`)
+      showProgress.value = false
+    } else {
+      throw error
     }
-  )
+  }
 }
 
 function handleCancelDownload() {

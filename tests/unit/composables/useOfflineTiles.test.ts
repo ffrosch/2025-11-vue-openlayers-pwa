@@ -213,5 +213,33 @@ describe('useOfflineTiles', () => {
       expect(downloadProgress.value.downloaded).toBeGreaterThanOrEqual(0)
       expect(downloadProgress.value.failed).toBeGreaterThanOrEqual(0)
     })
+
+    it('should throw error when storage quota exceeded', async () => {
+      const { downloadArea } = useOfflineTiles()
+
+      // Large bbox that will require significant storage
+      const largeBbox: BoundingBox = {
+        west: 8.0,
+        south: 47.0,
+        east: 10.0,
+        north: 49.0,
+      }
+
+      // Mock low storage quota (only 1 MB available)
+      Object.defineProperty(global.navigator, 'storage', {
+        writable: true,
+        configurable: true,
+        value: {
+          estimate: async () => ({
+            usage: 1024 * 1024 * 499, // 499 MB used
+            quota: 1024 * 1024 * 500, // 500 MB quota (only 1 MB available)
+          }),
+          persist: async () => true,
+          persisted: async () => false,
+        },
+      })
+
+      await expect(downloadArea(largeBbox, 'Test Area', 10, 2)).rejects.toThrow('Insufficient storage')
+    })
   })
 })
