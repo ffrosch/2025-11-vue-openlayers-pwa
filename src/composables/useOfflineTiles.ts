@@ -3,6 +3,7 @@ import type { BoundingBox, DownloadProgress, DownloadedArea } from '@/types'
 import { calculateDownloadList, estimateDownloadSize } from '@/services/tileCalculator'
 import { downloadTiles } from '@/services/tileDownloader'
 import { useDownloadedAreas } from '@/composables/useDownloadedAreas'
+import { useStorageQuota } from '@/composables/useStorageQuota'
 import type Map from 'ol/Map'
 import { transformExtent } from 'ol/proj'
 
@@ -41,7 +42,8 @@ export function useOfflineTiles(): UseOfflineTilesReturn {
     isCancelled: false,
   })
 
-  const { saveAreaMetadata } = useDownloadedAreas()
+  const { saveAreaMetadata, getAllAreas } = useDownloadedAreas()
+  const { requestPersistence } = useStorageQuota()
 
   let cancelRequested = false
   let downloadStartTime = 0
@@ -53,7 +55,7 @@ export function useOfflineTiles(): UseOfflineTilesReturn {
     additionalZoomLevels: number,
     onProgress?: (progress: DownloadProgress) => void
   ): Promise<void> {
-    // Reset state
+    // Reset state first
     cancelRequested = false
     downloadStartTime = Date.now()
 
@@ -71,6 +73,19 @@ export function useOfflineTiles(): UseOfflineTilesReturn {
       bytesDownloaded: 0,
       isComplete: false,
       isCancelled: false,
+    }
+
+    // Request persistent storage on first download
+    const existingAreas = await getAllAreas()
+    if (existingAreas.length === 0) {
+      await requestPersistence()
+    }
+
+    // Check if cancelled during persistence request
+    if (cancelRequested) {
+      downloadProgress.value.isCancelled = true
+      downloadProgress.value.isComplete = false
+      return
     }
 
     // Progress callback
