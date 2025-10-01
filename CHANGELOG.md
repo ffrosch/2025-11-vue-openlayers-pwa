@@ -93,11 +93,16 @@ This file tracks architectural decisions, feature additions, and significant cha
    - Cancel button (changes to Close when complete)
 
 **Integration:**
-- **`MapView.vue`** updated with complete download workflow:
+- **`MapComponent.vue`** emits map events:
+  - `mapReady` event when map initializes
+  - `moveEnd` event when viewport changes (pan/zoom)
+- **`MapView.vue`** with complete download workflow:
   - Download button positioned as FAB (top-right)
   - Progress overlay during downloads
   - Cancellation and completion handling
-  - Static extent (Baden-Württemberg region) as proof of concept
+  - **Dynamic extent tracking** - updates as user pans/zooms
+  - Real-time zoom level from map view
+  - Download dialog shows current viewport bounds
 
 **Project Status:** 74 tests passing (Phase 0: 8, Phase 1: 52, Phase 2: 14)
 
