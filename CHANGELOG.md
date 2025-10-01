@@ -4,454 +4,65 @@ This file tracks architectural decisions, feature additions, and significant cha
 
 ---
 
-## 2025-10-01 - Testing Infrastructure & Tile Calculator (Phase 0 & Phase 1 Part 1)
+## 2025-10-01 - Core Infrastructure Complete (Phase 0 & Phase 1) ✅
 
-### Testing Infrastructure (Phase 0) - Complete ✅
+### Phase 0: Testing Infrastructure - Complete ✅
 
 **Testing Framework Setup:**
 - Vitest 3.2.4 with jsdom environment for browser API simulation
 - fake-indexeddb 6.2.2 for real IndexedDB testing (no mocks)
 - @vue/test-utils 2.4.6 for Vue component testing
 - Coverage reporting with v8
+- TDD approach: write failing tests first, implement until green
 
 **Test Helpers Created:**
 - `tests/helpers/mockTiles.ts` - Mock data generators (tiles, blobs, bboxes, areas)
 - `tests/helpers/indexedDBHelpers.ts` - DB utilities (cleanup, counting, waiting)
-- `tests/setup.ts` - Global setup (IndexedDB cleanup, navigator mocks)
+- `tests/setup.ts` - Global setup (IndexedDB cleanup, navigator.storage mocks)
 
-**Verification:**
-- 8 setup tests passing (IndexedDB, storage API, crypto.randomUUID)
-- Test scripts: `bun test`, `bun test:run`, `bun test:ui`, `bun test:coverage`
+**Verification:** 8 setup tests passing (IndexedDB, storage API, crypto.randomUUID)
 
-### Tile Calculator Service (Phase 1 Part 1) - Complete ✅
+### Phase 1: Core Infrastructure - Complete ✅
 
-**New Types (`src/types.ts`):**
+**Type Definitions (`src/types.ts`):**
 - `TileCoord` - Tile coordinates (z, x, y)
 - `BoundingBox` - Geographic extent (west, south, east, north)
-- `DownloadedArea` - Area metadata (id, name, bbox, zoom levels, size, date, tile count)
-- `DownloadProgress` - Download state tracking
+- `DownloadedArea` - Area metadata (id, name, bbox, zoom levels, size, date)
+- `DownloadProgress` - Download state (total, downloaded, failed, percentage, ETA)
 - `StorageQuota` - Storage info (usage, quota, available, percentUsed, isPersisted)
 
-**Service Implementation (`src/services/tileCalculator.ts`):**
-- `lonLatToTile()` - Convert lat/lon to Web Mercator tile coordinates
-  - Handles longitude wrapping, latitude clamping (±85.0511°)
-  - Edge cases: 180° longitude, pole proximity
-- `getTilesInExtent()` - Get all tiles within bounding box
-  - Validates bbox (throws if west > east)
-  - Handles date line crossing, empty bbox
-- `calculateDownloadList()` - Calculate tiles for multi-zoom download
-  - Collects tiles across zoom levels
-  - No duplicates
-- `estimateDownloadSize()` - Estimate bytes (20KB avg per tile)
+**Services Implemented:**
+1. **`tileCalculator.ts`** - 22 tests passing
+   - `lonLatToTile()` - Lat/lon → Web Mercator tile coords (handles wrapping, clamping)
+   - `getTilesInExtent()` - Get all tiles in bounding box (validates bbox, handles date line)
+   - `calculateDownloadList()` - Multi-zoom tile list (no duplicates)
+   - `estimateDownloadSize()` - Byte estimation (20KB avg per tile)
 
-**Tests:** 22 tests passing (100% coverage)
-- 7 tests for lonLatToTile (edge cases, normalization)
-- 7 tests for getTilesInExtent (bbox validation, date line, poles)
-- 5 tests for calculateDownloadList (multi-zoom, deduplication)
-- 3 tests for estimateDownloadSize
+2. **`tileDownloader.ts`** - 17 tests passing
+   - `getTileFromStorage()` / `saveTileToStorage()` / `deleteTileFromStorage()` - IndexedDB CRUD
+   - `getAllStoredTileKeys()` - Cache management
+   - `downloadTile()` - Single tile download with URL template support
+   - `downloadTiles()` - Batch download with progress tracking, graceful failure handling
 
-**Files Created:**
-- `src/services/tileCalculator.ts`
-- `tests/unit/services/tileCalculator.test.ts`
-- `vitest.config.ts`
-- `tests/setup.ts`, `tests/helpers/`, `tests/README.md`
+**Composables Implemented:**
+- **`useStorageQuota.ts`** - 13 tests passing
+  - `updateStorageInfo()` - Query and calculate storage quota
+  - `requestPersistence()` - Request persistent storage
+  - `formatBytes()` - Human-readable byte formatting
+  - `isStorageSupported` - Browser Storage API detection
+
+**Map Enhancement:**
+- **`MapComponent.vue`** updated with custom tile load function:
+  - Check IndexedDB cache first (offline support)
+  - Fallback to network when online
+  - Auto-cache fetched tiles for future offline use
+  - Show placeholder when offline and tile unavailable
+
+**Project Status:** 60 tests passing (8 setup + 22 tileCalculator + 17 tileDownloader + 13 useStorageQuota)
 
 ---
 
 ## Planned Features
-
-### Testing Infrastructure (Phase 0 - Before Implementation)
-
-**Goal**: Establish comprehensive TDD testing strategy with real implementations (no mocks).
-
-#### Dependencies
-- `vitest@2.1.8` - Fast unit test framework with Vite integration
-- `@vitest/ui@2.1.8` - Browser UI for test visualization
-- `@vue/test-utils@2.4.6` - Vue component testing utilities
-- `jsdom@25.0.1` - Browser environment simulation
-- `fake-indexeddb@6.0.0` - Real IndexedDB implementation for tests
-- `@vitest/coverage-v8@2.1.8` - Code coverage reporting
-
-#### Test Strategy
-- **TDD Approach**: Write tests first (fail), implement until green
-- **No Mocks**: Use real IndexedDB (`fake-indexeddb`), real browser APIs (jsdom)
-- **Test After Implementation**: Run corresponding tests after each function implementation
-- **Debug Until Pass**: Iterate on implementation until tests succeed
-- **Coverage Target**: 80%+ for services/composables, 60%+ for components
-
-#### Test File Structure
-```
-tests/
-├── unit/
-│   ├── services/
-│   │   ├── tileCalculator.test.ts       # Tile coordinate calculations
-│   │   └── tileDownloader.test.ts       # Download and retry logic
-│   ├── composables/
-│   │   ├── useStorageQuota.test.ts      # Storage monitoring
-│   │   ├── useOfflineTiles.test.ts      # Download orchestration
-│   │   └── useDownloadedAreas.test.ts   # Area CRUD operations
-│   └── components/
-│       ├── MapComponent.test.ts         # Offline tile loader
-│       ├── DownloadButton.test.ts       # Download dialog logic
-│       └── OfflineAreasManager.test.ts  # Areas list rendering
-├── integration/
-│   └── offline-flow.test.ts             # Full download→offline cycle
-├── setup.ts                              # Test environment configuration
-└── helpers/
-    ├── mockTiles.ts                      # Test tile data generators
-    └── indexedDBHelpers.ts               # DB cleanup utilities
-```
-
-#### Unit Tests for Tile Calculator (`tileCalculator.test.ts`)
-
-**Function: `lonLatToTile(lon, lat, zoom)`**
-- ✅ Test: Convert (0°, 0°) at zoom 0 → tile (0, 0)
-- ✅ Test: Convert (180°, 85°) at zoom 1 → tile (2, 0) [east edge, north]
-- ✅ Test: Convert (-180°, -85°) at zoom 1 → tile (0, 1) [west edge, south]
-- ✅ Test: Stuttgart (9.18°E, 48.77°N) at zoom 10 → tile (536, 347)
-- ✅ Test: Zoom 18 produces large tile numbers (x: 137000+, y: 88000+)
-- ✅ Test: Invalid lat (>90°) → clamp or throw error
-- ✅ Test: Lon wrapping: 370° = 10° (normalize to -180..180)
-
-**Function: `getTilesInExtent(bbox, zoom)`**
-- ✅ Test: Small bbox (1°×1°) at zoom 8 → ~4 tiles
-- ✅ Test: Large bbox (Baden-Württemberg) at zoom 8 → ~50-100 tiles
-- ✅ Test: Single tile bbox (exact tile bounds) → 1 tile
-- ✅ Test: Bbox crossing date line (-170° to 170°) → correct tile list
-- ✅ Test: Bbox at poles (lat >85°) → edge case handling
-- ✅ Test: Empty bbox (west=east, north=south) → 1 tile or error
-- ✅ Test: Inverted bbox (west>east) → throw error or auto-correct
-
-**Function: `calculateDownloadList(bbox, baseZoom, additionalLevels)`**
-- ✅ Test: 0 additional levels → only baseZoom tiles
-- ✅ Test: 3 additional levels → tiles for baseZoom + 3 levels
-- ✅ Test: Tile count increases 4× per zoom level (quadtree)
-- ✅ Test: No duplicate tiles in result array
-- ✅ Test: Tiles sorted by zoom level (optional, for download order)
-
-**Function: `estimateDownloadSize(tiles)`**
-- ✅ Test: 100 tiles × 20KB = 2MB (2,048,000 bytes)
-- ✅ Test: 0 tiles → 0 bytes
-- ✅ Test: 1 tile → 20,480 bytes (20KB)
-
-#### Unit Tests for Tile Downloader (`tileDownloader.test.ts`)
-
-**Function: `downloadAndStoreTile(tile, urlTemplate)`**
-- ✅ Test: Successful download → tile stored in IndexedDB with correct key
-- ✅ Test: Network error → retry 3 times with exponential backoff (1s, 2s, 4s)
-- ✅ Test: 404 error → fail after 3 retries, reject promise
-- ✅ Test: Timeout (slow network) → retry mechanism works
-- ✅ Test: Storage quota exceeded → throw specific error
-- ✅ Test: Verify blob size returned matches downloaded tile
-- ✅ Test: Verify IndexedDB key format: `tile_${z}_${x}_${y}`
-
-**Function: `batchDownloadTiles(tiles, batchSize, onProgress)`**
-- ✅ Test: Download 12 tiles in batches of 6 → 2 batches
-- ✅ Test: Progress callback called after each batch (2 times)
-- ✅ Test: Progress shows correct counts (downloaded, failed, percentage)
-- ✅ Test: Failed tiles don't stop batch (use Promise.allSettled)
-- ✅ Test: Final progress shows 100% completion
-- ✅ Test: Empty tile array → complete immediately with 0 downloads
-- ✅ Test: Cancellation via AbortController stops downloads
-
-#### Unit Tests for Storage Quota (`useStorageQuota.test.ts`)
-
-**Function: `updateStorageInfo()`**
-- ✅ Test: Returns StorageQuota with usage, quota, available, percentUsed
-- ✅ Test: PercentUsed calculation: (usage / quota) × 100
-- ✅ Test: Browser without Storage API → return default values (0s)
-- ✅ Test: Mock quota 1GB, usage 250MB → 25% used, 750MB available
-
-**Function: `requestPersistence()`**
-- ✅ Test: Persistence granted → return true, update isPersisted
-- ✅ Test: Persistence denied → return false
-- ✅ Test: Browser without persist API → return false gracefully
-
-**Function: `formatBytes(bytes)`**
-- ✅ Test: 0 bytes → "0 Bytes"
-- ✅ Test: 1024 bytes → "1 KB"
-- ✅ Test: 1,048,576 bytes → "1 MB"
-- ✅ Test: 1,073,741,824 bytes → "1 GB"
-- ✅ Test: 1500 bytes → "1.46 KB" (rounded)
-- ✅ Test: 25,600,000 bytes → "24.41 MB"
-
-#### Unit Tests for Offline Tiles (`useOfflineTiles.test.ts`)
-
-**Function: `downloadArea(area, onProgress)`**
-- ✅ Test: Complete download → area metadata saved with correct id, size, tileCount
-- ✅ Test: Progress updates multiple times during download
-- ✅ Test: ETA calculation decreases over time (realistic values)
-- ✅ Test: Failed tiles tracked in progress.failed count
-- ✅ Test: Cancellation → partial tiles deleted, no metadata saved
-- ✅ Test: Quota exceeded mid-download → stop gracefully, save progress
-- ✅ Test: Network offline → all tiles fail, downloadedArea has tileCount=0
-
-#### Unit Tests for Downloaded Areas (`useDownloadedAreas.test.ts`)
-
-**Function: `saveAreaMetadata(area)`**
-- ✅ Test: Save area → retrieve with same ID
-- ✅ Test: Area stored with correct downloadedAt timestamp
-- ✅ Test: Overwrite existing area with same ID
-
-**Function: `getAllAreas()`**
-- ✅ Test: 0 areas → empty array
-- ✅ Test: 3 saved areas → return all 3
-- ✅ Test: Areas sorted by downloadedAt descending (newest first)
-
-**Function: `deleteArea(areaId)`**
-- ✅ Test: Delete removes area metadata from IndexedDB
-- ✅ Test: Delete removes all associated tiles (tile_${z}_${x}_${y})
-- ✅ Test: Delete non-existent area → no error
-- ✅ Test: Verify storage freed after delete (quota check)
-
-**Function: `getTotalStorageUsed()`**
-- ✅ Test: 0 areas → 0 bytes
-- ✅ Test: 2 areas (10MB + 25MB) → 35MB total
-- ✅ Test: Deleted area not included in total
-
-#### Component Tests (`*.test.ts`)
-
-**MapComponent.vue - `offlineTileLoader()`**
-- ✅ Test: Tile in IndexedDB → load from cache (no network)
-- ✅ Test: Tile not in cache + online → fetch, store, load
-- ✅ Test: Tile not in cache + offline → show placeholder image
-- ✅ Test: IndexedDB error → fallback to network
-- ✅ Test: Object URL created and revoked after load
-
-**DownloadButton.vue**
-- ✅ Test: Button renders FAB with download icon
-- ✅ Test: Click opens dialog with current extent
-- ✅ Test: Extent calculation uses map view bounds
-- ✅ Test: Tile count updates when zoom slider changes
-- ✅ Test: Size estimate shows in MB (formatted)
-- ✅ Test: iOS warning shows when >3 zoom levels
-
-**OfflineAreasManager.vue**
-- ✅ Test: Renders area list with correct count
-- ✅ Test: Shows formatted size (MB) and tile count
-- ✅ Test: Delete button triggers confirmation dialog
-- ✅ Test: "View on Map" emits event with bbox
-- ✅ Test: Total storage summary calculates correctly
-
-#### Integration Tests (`offline-flow.test.ts`)
-
-**Full Offline Cycle**
-- ✅ Test: Download area → verify tiles in IndexedDB → load map offline → tiles render
-- ✅ Test: Download → delete area → verify tiles removed → offline map shows placeholder
-- ✅ Test: Multiple areas → delete one → other areas still work offline
-- ✅ Test: Network toggle (online → offline → online) → tile loading adapts
-
-#### Test Environment Setup (`setup.ts`)
-
-```typescript
-import { beforeEach, afterEach } from 'vitest'
-import 'fake-indexeddb/auto' // Global IndexedDB polyfill
-
-// Clear IndexedDB before each test
-beforeEach(async () => {
-  // Clear all IDB databases
-  const dbs = await indexedDB.databases()
-  for (const db of dbs) {
-    if (db.name) indexedDB.deleteDatabase(db.name)
-  }
-})
-
-// Mock navigator.storage API
-global.navigator.storage = {
-  estimate: async () => ({ usage: 1024 * 1024 * 50, quota: 1024 * 1024 * 500 }),
-  persist: async () => true,
-  persisted: async () => false,
-}
-
-// Mock navigator.onLine
-Object.defineProperty(navigator, 'onLine', {
-  writable: true,
-  value: true
-})
-```
-
-#### Test Commands
-```json
-{
-  "scripts": {
-    "test": "vitest",
-    "test:ui": "vitest --ui",
-    "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage",
-    "test:watch": "vitest watch"
-  }
-}
-```
-
-#### TDD Workflow
-1. **Write failing test** for function (e.g., `lonLatToTile()`)
-2. **Run test** → verify it fails: `bun test tileCalculator.test.ts`
-3. **Implement function** in `tileCalculator.ts`
-4. **Run test again** → if fails, debug and iterate
-5. **Test passes** → move to next function
-6. **Commit** code + tests together
-
-#### Success Criteria
-- ✅ All tests fail before implementation (verify test validity)
-- ✅ All tests pass after implementation
-- ✅ No mocks used (real IndexedDB, real browser APIs)
-- ✅ Coverage: >80% for services, >60% for components
-- ✅ Integration test covers full offline workflow
-- ✅ Tests run in <10 seconds (fast feedback)
-
----
-
-### PWA Auto-Update Verification & Enhancement
-
-**Goal**: Ensure users always run the latest app version with automatic updates.
-
-#### Current Configuration (✅ Already Implemented)
-
-**`vite.config.ts` - VitePWA Plugin:**
-```typescript
-VitePWA({
-  registerType: "autoUpdate",  // ✅ Auto-update enabled
-  injectRegister: false,       // Manual registration via PWABadge.vue
-  workbox: {
-    globPatterns: ["**/*.{js,css,html,svg,png,ico}"],
-    cleanupOutdatedCaches: true,  // ✅ Remove old caches
-    clientsClaim: true,           // ✅ Activate immediately
-  }
-})
-```
-
-**`PWABadge.vue` - Periodic Update Checks:**
-- ✅ Checks for updates every **60 minutes** (configurable via `period`)
-- ✅ Uses `useRegisterSW` from `virtual:pwa-register/vue`
-- ✅ Periodic sync: Fetches service worker file to detect new versions
-- ✅ Shows notification: "New content available, click reload to update"
-- ✅ User clicks "Reload" → `updateServiceWorker()` → app refreshes
-
-#### How Auto-Update Works
-
-**Update Detection Flow:**
-1. App loads → Service worker registered
-2. Every hour → `fetch(swUrl, { cache: 'no-store' })` checks for new SW
-3. New SW detected → `registration.update()` installs new version
-4. `needRefresh` becomes true → PWABadge shows notification
-5. User clicks "Reload" → `updateServiceWorker()` → `skipWaiting()` → page reloads
-6. New version active → old caches cleaned (due to `cleanupOutdatedCaches`)
-
-**Automatic vs Manual Update:**
-- **Automatic Installation**: New SW downloaded and installed in background
-- **Manual Activation**: User must click "Reload" to activate (prevents disruption)
-- **Alternative**: Could use `registerType: "autoUpdate"` + auto-reload (no user prompt)
-
-#### Enhancement: Silent Auto-Reload (Optional)
-
-For fully automatic updates without user interaction:
-
-**Modify `PWABadge.vue`:**
-```typescript
-const { offlineReady, needRefresh, updateServiceWorker } = useRegisterSW({
-  immediate: true,
-  onNeedRefresh() {
-    // Auto-reload without prompt (optional)
-    updateServiceWorker(true) // skipWaiting + reload
-  },
-  onOfflineReady() {
-    console.log('App ready to work offline')
-  },
-  onRegisteredSW(swUrl, r) {
-    // Periodic sync every hour
-    registerPeriodicSync(swUrl, r)
-  }
-})
-```
-
-**Trade-offs:**
-- ✅ Pro: Users always on latest version (zero manual steps)
-- ❌ Con: Unexpected reload may disrupt user (e.g., mid-form-fill)
-- **Recommendation**: Keep current behavior (notify + manual reload) for better UX
-
-#### Verification Checklist
-
-**Test Auto-Update Locally:**
-1. Build app: `bun run build`
-2. Serve production build: `bun run preview`
-3. Open in browser, install PWA (optional)
-4. Make code change (e.g., edit `HomeView.vue`)
-5. Rebuild: `bun run build`
-6. Serve updated build on same port
-7. Wait for periodic check (or trigger manually in DevTools)
-8. Verify: PWABadge notification appears → click "Reload" → new version loads
-
-**Test on Mobile (iOS/Android):**
-1. Deploy to GitHub Pages (production)
-2. Visit on mobile device, add to home screen
-3. Push code update to GitHub (triggers deployment)
-4. Open PWA on mobile after deployment completes
-5. Within 60 minutes → update notification appears
-6. Tap "Reload" → verify new version
-
-**Production Deployment:**
-- ✅ GitHub Actions workflow builds on push to `main`
-- ✅ Service worker deployed with versioned hash (cache busting)
-- ✅ Browser checks for new SW file periodically
-- ✅ Update cycle: Code push → Deploy → Mobile devices update within 1 hour
-
-#### Current Status: ✅ Auto-Update Working
-
-- **No changes needed** - already correctly configured
-- Update check interval: 60 minutes (change `period` to adjust)
-- Update strategy: Prompt user with "Reload" button (good UX)
-- Cache cleanup: Automatic via `cleanupOutdatedCaches: true`
-- Immediate activation: `clientsClaim: true` ensures new SW takes control
-
-#### Monitoring Update Health
-
-**Add telemetry (optional):**
-```typescript
-// In PWABadge.vue
-const { needRefresh, updateServiceWorker } = useRegisterSW({
-  onNeedRefresh() {
-    console.log('[PWA] Update available')
-    // Optional: Send analytics event
-  },
-  onOfflineReady() {
-    console.log('[PWA] App cached for offline use')
-  }
-})
-```
-
-**Browser DevTools Verification:**
-- Chrome DevTools → Application → Service Workers
-- Check "Update on reload" during development
-- See SW lifecycle: Installing → Waiting → Activated
-
----
-
-### Offline Map Tiles with Download Management
-
-**Goal**: Enable users to download map tiles for offline use with full area management capabilities.
-
-#### Phase 1: Core Infrastructure (Week 1)
-- **Dependencies**: Add `idb-keyval@6.2.1` for IndexedDB storage
-- **Storage Strategy**:
-  - Use IndexedDB (not Cache API) for tile storage (500MB-1GB quota on mobile vs 50MB Cache API limit)
-  - Store tiles as Blobs with keys: `tile_${z}_${x}_${y}`
-  - Create separate stores: tiles (Blobs), areas metadata (DownloadedArea objects), download queue (for pause/resume)
-- **Type Definitions** (add to `src/types.ts`):
-  - `TileCoord` - Tile coordinates (z, x, y)
-  - `BoundingBox` - Geographic extent (west, south, east, north)
-  - `DownloadedArea` - Area metadata (id, name, bbox, zoom levels, size, date, tile count)
-  - `DownloadProgress` - Download state tracking (total, downloaded, failed, percentage, ETA, bytes)
-  - `StorageQuota` - Storage info (usage, quota, available, percentUsed, isPersisted)
-- **Services**:
-  - `src/services/tileCalculator.ts` - Convert lat/lon to tile coords, calculate tiles in bounding box
-  - `src/services/tileDownloader.ts` - Download orchestration with retry logic and progress tracking
-- **Composables**:
-  - `src/composables/useStorageQuota.ts` - Monitor storage quota, request persistent storage
-- **Map Enhancement**:
-  - Update `MapComponent.vue` with custom `tileLoadFunction`
-  - Load tiles from IndexedDB first, fallback to network
-  - Store fetched tiles automatically when online
-  - Use placeholder image when offline and tile not cached
 
 #### Phase 2: Download Functionality (Week 2)
 - **Download Button Component** (`src/components/DownloadButton.vue`):
