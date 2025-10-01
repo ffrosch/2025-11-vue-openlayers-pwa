@@ -288,4 +288,150 @@ describe('tileDownloader', () => {
       expect(lastCall).toHaveProperty('total')
     })
   })
+
+  describe('downloadTileWithRetry', () => {
+    it('should successfully download on first attempt', async () => {
+      const tile = createMockTile(8, 100, 50)
+      const urlTemplate = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
+
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        blob: async () => createMockTileBlob(),
+      })
+
+      const { downloadTileWithRetry } = await import('@/services/tileDownloader')
+      const result = await downloadTileWithRetry(tile, urlTemplate)
+
+      expect(result).toBeInstanceOf(Blob)
+      expect(global.fetch).toHaveBeenCalledTimes(1)
+    })
+
+    it('should retry on network failure up to maxRetries', async () => {
+      const tile = createMockTile(8, 100, 50)
+      const urlTemplate = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
+
+      let attemptCount = 0
+      global.fetch = vi.fn().mockImplementation(() => {
+        attemptCount++
+        if (attemptCount < 3) {
+          return Promise.reject(new Error('Network error'))
+        }
+        return Promise.resolve({
+          ok: true,
+          blob: async () => createMockTileBlob(),
+        })
+      })
+
+      const { downloadTileWithRetry } = await import('@/services/tileDownloader')
+      const result = await downloadTileWithRetry(tile, urlTemplate, 3, 10)
+
+      expect(result).toBeInstanceOf(Blob)
+      expect(attemptCount).toBe(3)
+    })
+
+    it('should throw error after maxRetries exhausted', async () => {
+      const tile = createMockTile(8, 100, 50)
+      const urlTemplate = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
+
+      global.fetch = vi.fn().mockRejectedValue(new Error('Network error'))
+
+      const { downloadTileWithRetry } = await import('@/services/tileDownloader')
+
+      await expect(downloadTileWithRetry(tile, urlTemplate, 3, 10)).rejects.toThrow()
+      expect(global.fetch).toHaveBeenCalledTimes(3)
+    })
+
+    it('should use exponential backoff between retries', async () => {
+      const tile = createMockTile(8, 100, 50)
+      const urlTemplate = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
+      const baseDelay = 100
+      const timestamps: number[] = []
+
+      let attemptCount = 0
+      global.fetch = vi.fn().mockImplementation(() => {
+        attemptCount++
+        timestamps.push(Date.now())
+        if (attemptCount < 3) {
+          return Promise.reject(new Error('Network error'))
+        }
+        return Promise.resolve({
+          ok: true,
+          blob: async () => createMockTileBlob(),
+        })
+      })
+
+      const { downloadTileWithRetry } = await import('@/services/tileDownloader')
+      await downloadTileWithRetry(tile, urlTemplate, 3, baseDelay)
+
+      // Check delays between attempts (with tolerance for timing variations)
+      const delay1 = timestamps[1]! - timestamps[0]!
+      const delay2 = timestamps[2]! - timestamps[1]!
+
+      // First retry should wait ~100ms, second retry ~200ms
+      expect(delay1).toBeGreaterThanOrEqual(baseDelay * 0.8)
+      expect(delay2).toBeGreaterThanOrEqual(baseDelay * 2 * 0.8)
+      expect(delay2).toBeGreaterThan(delay1)
+    })
+
+    it('should not retry on 4xx client errors', async () => {
+      const tile = createMockTile(8, 100, 50)
+      const urlTemplate = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
+
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+      })
+
+      const { downloadTileWithRetry } = await import('@/services/tileDownloader')
+
+      await expect(downloadTileWithRetry(tile, urlTemplate, 3, 10)).rejects.toThrow()
+      expect(global.fetch).toHaveBeenCalledTimes(1) // No retries
+    })
+
+    it('should retry on 5xx server errors', async () => {
+      const tile = createMockTile(8, 100, 50)
+      const urlTemplate = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
+
+      let attemptCount = 0
+      global.fetch = vi.fn().mockImplementation(() => {
+        attemptCount++
+        if (attemptCount < 3) {
+          return Promise.resolve({ ok: false, status: 503 })
+        }
+        return Promise.resolve({
+          ok: true,
+          blob: async () => createMockTileBlob(),
+        })
+      })
+
+      const { downloadTileWithRetry } = await import('@/services/tileDownloader')
+      const result = await downloadTileWithRetry(tile, urlTemplate, 3, 10)
+
+      expect(result).toBeInstanceOf(Blob)
+      expect(attemptCount).toBe(3)
+    })
+
+    it('should retry on 429 rate limit errors', async () => {
+      const tile = createMockTile(8, 100, 50)
+      const urlTemplate = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
+
+      let attemptCount = 0
+      global.fetch = vi.fn().mockImplementation(() => {
+        attemptCount++
+        if (attemptCount < 2) {
+          return Promise.resolve({ ok: false, status: 429 })
+        }
+        return Promise.resolve({
+          ok: true,
+          blob: async () => createMockTileBlob(),
+        })
+      })
+
+      const { downloadTileWithRetry } = await import('@/services/tileDownloader')
+      const result = await downloadTileWithRetry(tile, urlTemplate, 3, 10)
+
+      expect(result).toBeInstanceOf(Blob)
+      expect(attemptCount).toBe(2)
+    })
+  })
 })

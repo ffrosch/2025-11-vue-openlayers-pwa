@@ -61,6 +61,13 @@ export async function getAllStoredTileKeys(): Promise<string[]> {
 }
 
 /**
+ * Sleep utility for delays
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+/**
  * Download a single tile from the given URL template
  */
 export async function downloadTile(tile: TileCoord, urlTemplate: string): Promise<Blob> {
@@ -79,8 +86,78 @@ export async function downloadTile(tile: TileCoord, urlTemplate: string): Promis
 }
 
 /**
+ * Download a single tile with retry logic and exponential backoff
+ * @param tile - The tile coordinates to download
+ * @param urlTemplate - URL template with {z}, {x}, {y} placeholders
+ * @param maxRetries - Maximum number of retry attempts (default: 3)
+ * @param baseDelay - Base delay in milliseconds for exponential backoff (default: 1000)
+ */
+export async function downloadTileWithRetry(
+  tile: TileCoord,
+  urlTemplate: string,
+  maxRetries = 3,
+  baseDelay = 1000
+): Promise<Blob> {
+  let lastError: Error | null = null
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const url = urlTemplate
+        .replace('{z}', tile.z.toString())
+        .replace('{x}', tile.x.toString())
+        .replace('{y}', tile.y.toString())
+
+      const response = await fetch(url)
+
+      if (!response.ok) {
+        const error = new Error(`Failed to download tile ${tile.z}/${tile.x}/${tile.y}: ${response.status}`)
+
+        // Don't retry on client errors (4xx) except 429 (rate limit)
+        if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+          throw error
+        }
+
+        // Retry on server errors (5xx) and rate limits (429)
+        lastError = error
+
+        // Don't sleep on last attempt
+        if (attempt < maxRetries) {
+          const delay = baseDelay * Math.pow(2, attempt - 1)
+          await sleep(delay)
+        }
+        continue
+      }
+
+      return await response.blob()
+    } catch (error) {
+      lastError = error as Error
+
+      // If this is a non-retryable error (like 4xx), rethrow immediately
+      if (error instanceof Error && error.message.includes(': 4')) {
+        const status = parseInt(error.message.match(/: (\d+)$/)?.[1] || '0')
+        if (status >= 400 && status < 500 && status !== 429) {
+          throw error
+        }
+      }
+
+      // Don't retry if this was the last attempt
+      if (attempt === maxRetries) {
+        break
+      }
+
+      // Exponential backoff: baseDelay * 2^(attempt-1)
+      const delay = baseDelay * Math.pow(2, attempt - 1)
+      await sleep(delay)
+    }
+  }
+
+  throw lastError || new Error(`Failed to download tile ${tile.z}/${tile.x}/${tile.y} after ${maxRetries} attempts`)
+}
+
+/**
  * Download multiple tiles with progress tracking
  * Uses Promise.allSettled to handle failures gracefully
+ * Includes retry logic with exponential backoff for failed downloads
  */
 export async function downloadTiles(
   tiles: TileCoord[],
@@ -93,7 +170,7 @@ export async function downloadTiles(
 
   const downloadPromises = tiles.map(async (tile) => {
     try {
-      const blob = await downloadTile(tile, urlTemplate)
+      const blob = await downloadTileWithRetry(tile, urlTemplate)
       await saveTileToStorage(tile, blob)
       downloaded++
       if (onProgress) {
