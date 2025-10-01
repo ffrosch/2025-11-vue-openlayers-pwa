@@ -4,6 +4,60 @@ This file tracks architectural decisions, feature additions, and significant cha
 
 ---
 
+## 2025-10-01 - Testing Infrastructure & Tile Calculator (Phase 0 & Phase 1 Part 1)
+
+### Testing Infrastructure (Phase 0) - Complete ✅
+
+**Testing Framework Setup:**
+- Vitest 3.2.4 with jsdom environment for browser API simulation
+- fake-indexeddb 6.2.2 for real IndexedDB testing (no mocks)
+- @vue/test-utils 2.4.6 for Vue component testing
+- Coverage reporting with v8
+
+**Test Helpers Created:**
+- `tests/helpers/mockTiles.ts` - Mock data generators (tiles, blobs, bboxes, areas)
+- `tests/helpers/indexedDBHelpers.ts` - DB utilities (cleanup, counting, waiting)
+- `tests/setup.ts` - Global setup (IndexedDB cleanup, navigator mocks)
+
+**Verification:**
+- 8 setup tests passing (IndexedDB, storage API, crypto.randomUUID)
+- Test scripts: `bun test`, `bun test:run`, `bun test:ui`, `bun test:coverage`
+
+### Tile Calculator Service (Phase 1 Part 1) - Complete ✅
+
+**New Types (`src/types.ts`):**
+- `TileCoord` - Tile coordinates (z, x, y)
+- `BoundingBox` - Geographic extent (west, south, east, north)
+- `DownloadedArea` - Area metadata (id, name, bbox, zoom levels, size, date, tile count)
+- `DownloadProgress` - Download state tracking
+- `StorageQuota` - Storage info (usage, quota, available, percentUsed, isPersisted)
+
+**Service Implementation (`src/services/tileCalculator.ts`):**
+- `lonLatToTile()` - Convert lat/lon to Web Mercator tile coordinates
+  - Handles longitude wrapping, latitude clamping (±85.0511°)
+  - Edge cases: 180° longitude, pole proximity
+- `getTilesInExtent()` - Get all tiles within bounding box
+  - Validates bbox (throws if west > east)
+  - Handles date line crossing, empty bbox
+- `calculateDownloadList()` - Calculate tiles for multi-zoom download
+  - Collects tiles across zoom levels
+  - No duplicates
+- `estimateDownloadSize()` - Estimate bytes (20KB avg per tile)
+
+**Tests:** 22 tests passing (100% coverage)
+- 7 tests for lonLatToTile (edge cases, normalization)
+- 7 tests for getTilesInExtent (bbox validation, date line, poles)
+- 5 tests for calculateDownloadList (multi-zoom, deduplication)
+- 3 tests for estimateDownloadSize
+
+**Files Created:**
+- `src/services/tileCalculator.ts`
+- `tests/unit/services/tileCalculator.test.ts`
+- `vitest.config.ts`
+- `tests/setup.ts`, `tests/helpers/`, `tests/README.md`
+
+---
+
 ## Planned Features
 
 ### Testing Infrastructure (Phase 0 - Before Implementation)

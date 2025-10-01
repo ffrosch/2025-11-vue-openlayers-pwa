@@ -14,6 +14,10 @@ This is a Vue 3 + TypeScript PWA (Progressive Web App) using Vite as the build t
 - `bun run build` - Build for production (runs type-checking first, then Vite build)
 - `bun run preview` - Preview production build locally
 - `bun run typecheck` - Run TypeScript type checking without building
+- `bun test` - Run tests in watch mode
+- `bun test:run` - Run tests once
+- `bun test:ui` - Run tests with browser UI
+- `bun test:coverage` - Generate coverage report
 
 ## Architecture & Tech Stack
 
@@ -58,12 +62,32 @@ This is a Vue 3 + TypeScript PWA (Progressive Web App) using Vite as the build t
 src/
   ├── components/
   │   ├── HelloWorld.vue - Demo component
+  │   ├── MapComponent.vue - OpenLayers map with offline tile support
   │   └── PWABadge.vue - PWA update notification UI
+  ├── views/
+  │   ├── HomeView.vue - Landing page
+  │   └── MapView.vue - Full-screen map view
+  ├── services/
+  │   └── tileCalculator.ts - Tile coordinate calculations
+  ├── composables/ - Vue composables (to be added)
+  ├── router/
+  │   └── index.ts - Vue Router configuration
   ├── assets/ - Static assets (images, etc.)
-  ├── App.vue - Root component
+  ├── types.ts - Central TypeScript definitions
+  ├── App.vue - Root component (router outlet)
   ├── main.ts - Application entry point
   ├── style.css - Global styles with Tailwind
   └── vite-env.d.ts - Vite type declarations
+
+tests/
+  ├── unit/
+  │   ├── services/ - Service tests
+  │   ├── composables/ - Composable tests
+  │   └── components/ - Component tests
+  ├── integration/ - Integration tests
+  ├── helpers/ - Test utilities
+  ├── setup.ts - Global test setup
+  └── README.md - Testing documentation
 ```
 
 ## Development Workflow
