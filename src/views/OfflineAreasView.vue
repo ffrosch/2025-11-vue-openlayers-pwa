@@ -2,6 +2,7 @@
 import { useRouter } from 'vue-router'
 import OfflineAreasManager from '@/components/OfflineAreasManager.vue'
 import StoragePersistenceIndicator from '@/components/StoragePersistenceIndicator.vue'
+import CompressionSettings from '@/components/CompressionSettings.vue'
 
 const router = useRouter()
 
@@ -29,6 +30,9 @@ function handleClose() {
       <div class="persistence-section">
         <StoragePersistenceIndicator />
       </div>
+      <div class="compression-section">
+        <CompressionSettings />
+      </div>
       <OfflineAreasManager @view-on-map="handleViewOnMap" @close="handleClose" />
     </div>
   </div>
@@ -54,6 +58,10 @@ function handleClose() {
 }
 
 .persistence-section {
+  margin-bottom: 1.5rem;
+}
+
+.compression-section {
   margin-bottom: 1.5rem;
 }
 </style>
