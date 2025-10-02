@@ -5,7 +5,7 @@ import { calculateDownloadList } from '@/services/tileCalculator'
 
 const AREA_KEY_PREFIX = 'area_'
 
-export interface OrphanedTilesInfo {
+export interface CachedTilesInfo {
   count: number
   estimatedSizeBytes: number
   tileKeys: string[]
@@ -17,8 +17,8 @@ export interface UseDownloadedAreasReturn {
   getAreaById: (areaId: string) => Promise<DownloadedArea | null>
   deleteArea: (areaId: string) => Promise<void>
   getTotalStorageUsed: () => Promise<number>
-  getOrphanedTiles: () => Promise<OrphanedTilesInfo>
-  deleteOrphanedTiles: () => Promise<void>
+  getCachedTiles: () => Promise<CachedTilesInfo>
+  deleteCachedTiles: () => Promise<void>
 }
 
 export function useDownloadedAreas(): UseDownloadedAreasReturn {
@@ -101,9 +101,9 @@ export function useDownloadedAreas(): UseDownloadedAreasReturn {
   }
 
   /**
-   * Get information about orphaned tiles (tiles not associated with any area)
+   * Get information about cached tiles (tiles not associated with any area)
    */
-  async function getOrphanedTiles(): Promise<OrphanedTilesInfo> {
+  async function getCachedTiles(): Promise<CachedTilesInfo> {
     // Get all stored tile keys
     const allTileKeys = await getAllStoredTileKeys()
 
@@ -120,8 +120,8 @@ export function useDownloadedAreas(): UseDownloadedAreasReturn {
       }
     }
 
-    // Find orphaned tiles (tiles that exist but aren't in any area)
-    const orphanedKeys = allTileKeys.filter(key => !associatedTileKeys.has(key))
+    // Find cached tiles (tiles that exist but aren't in any area)
+    const cachedKeys = allTileKeys.filter(key => !associatedTileKeys.has(key))
 
     // console.log(allTileKeys)
     // console.log(areas)
@@ -129,23 +129,23 @@ export function useDownloadedAreas(): UseDownloadedAreasReturn {
     // console.log(cachedKeys)
 
     // Estimate size (20KB per tile)
-    const estimatedSizeBytes = orphanedKeys.length * 20 * 1024
+    const estimatedSizeBytes = cachedKeys.length * 20 * 1024
 
     return {
-      count: orphanedKeys.length,
+      count: cachedKeys.length,
       estimatedSizeBytes,
-      tileKeys: orphanedKeys,
+      tileKeys: cachedKeys,
     }
   }
 
   /**
-   * Delete all orphaned tiles (tiles not associated with any area)
+   * Delete all cached tiles (tiles not associated with any area)
    */
-  async function deleteOrphanedTiles(): Promise<void> {
-    const orphanedInfo = await getOrphanedTiles()
+  async function deleteCachedTiles(): Promise<void> {
+    const cachedInfo = await getCachedTiles()
 
     // Parse tile keys and delete them
-    for (const key of orphanedInfo.tileKeys) {
+    for (const key of cachedInfo.tileKeys) {
       // Parse key format: tile_z_x_y
       const parts = key.split('_')
       if (parts.length === 4) {
@@ -165,7 +165,7 @@ export function useDownloadedAreas(): UseDownloadedAreasReturn {
     getAreaById,
     deleteArea,
     getTotalStorageUsed,
-    getOrphanedTiles,
-    deleteOrphanedTiles,
+    getCachedTiles,
+    deleteCachedTiles,
   }
 }
