@@ -4,6 +4,20 @@ import { createMockBoundingBox } from '../../helpers/mockTiles'
 import { clear } from 'idb-keyval'
 import type { BoundingBox } from '@/types'
 
+// Mock tile compression to avoid image loading issues in tests
+vi.mock('@/services/tileCompression', () => ({
+  compressTileAuto: vi.fn(async (blob: Blob, profile: string) => ({
+    blob,
+    format: 'png' as const,
+    profile,
+    originalSize: blob.size,
+    compressedSize: blob.size,
+    compressionRatio: 1.0,
+  })),
+  detectWebPSupport: vi.fn(async () => false),
+  detectBestCompressionFormat: vi.fn(async () => 'png' as const),
+}))
+
 describe('useOfflineTiles', () => {
   beforeEach(async () => {
     await clear()

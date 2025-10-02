@@ -23,12 +23,13 @@ const formatTime = (seconds: number | undefined): string => {
 }
 
 const downloadSpeed = computed(() => {
-  if (!props.progress.estimatedTimeRemaining || props.progress.downloaded === 0) {
+  if (!props.progress.startTime || props.progress.downloaded === 0 || props.progress.bytesDownloaded === 0) {
     return 'Calculating...'
   }
-  const remaining = props.progress.total - props.progress.downloaded - props.progress.failed
-  const bytesRemaining = remaining * 20 * 1024 // 20KB per tile
-  const bytesPerSecond = bytesRemaining / props.progress.estimatedTimeRemaining
+  const elapsed = (Date.now() - props.progress.startTime) / 1000 // seconds
+  if (elapsed <= 0) return 'Calculating...'
+
+  const bytesPerSecond = props.progress.bytesDownloaded / elapsed
   return `${formatBytes(bytesPerSecond)}/s`
 })
 

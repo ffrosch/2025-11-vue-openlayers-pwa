@@ -34,6 +34,11 @@ export interface DownloadedArea {
   sizeBytes: number
   downloadedAt: string // ISO 8601 string
   tileUrlTemplate: string
+  // Compression stats (optional for backward compatibility)
+  compressionEnabled?: boolean
+  compressionProfile?: CompressionProfile
+  originalSizeBytes?: number // Uncompressed size
+  compressionRatio?: number // Average compression ratio
 }
 
 export interface DownloadProgress {
@@ -45,6 +50,7 @@ export interface DownloadProgress {
   currentTile?: TileCoord
   estimatedTimeRemaining?: number // milliseconds
   bytesDownloaded: number
+  startTime?: number // timestamp for speed calculation
   isComplete: boolean
   isCancelled: boolean
 }
@@ -55,4 +61,37 @@ export interface StorageQuota {
   available: number // remaining
   percentUsed: number
   isPersisted: boolean
+}
+
+export type CompressionFormat = 'webp' | 'jpeg' | 'png'
+
+export type CompressionProfile = 'high' | 'balanced' | 'aggressive'
+
+export interface CompressionProfileConfig {
+  quality: number // 0-1 for JPEG/WebP
+  targetCompressionRatio: number // Expected ratio (e.g., 0.5 = 50% reduction)
+}
+
+export interface CompressedTile {
+  blob: Blob
+  format: CompressionFormat
+  profile: CompressionProfile
+  originalSize: number
+  compressedSize: number
+  compressionRatio: number
+}
+
+export interface TileMetadata {
+  tileKey: string // tile_${z}_${x}_${y}
+  format: CompressionFormat
+  profile: CompressionProfile
+  originalSize: number
+  compressedSize: number
+  compressionRatio: number
+  compressedAt: string // ISO 8601 string
+}
+
+export interface CompressionSettings {
+  defaultProfile: CompressionProfile
+  cacheProfile: CompressionProfile // Always 'high' for cached tiles
 }

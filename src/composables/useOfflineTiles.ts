@@ -71,6 +71,7 @@ export function useOfflineTiles(): UseOfflineTilesReturn {
       failed: 0,
       percentage: 0,
       bytesDownloaded: 0,
+      startTime: Date.now(),
       isComplete: false,
       isCancelled: false,
     }
@@ -99,7 +100,7 @@ export function useOfflineTiles(): UseOfflineTilesReturn {
     }
 
     // Progress callback
-    const progressCallback = (stats: { downloaded: number; failed: number; total: number }) => {
+    const progressCallback = (stats: { downloaded: number; failed: number; total: number; bytesDownloaded: number }) => {
       const downloaded = stats.downloaded
       const failed = stats.failed
       const percentage = stats.total > 0 ? Math.round(((downloaded + failed) / stats.total) * 100) : 0
@@ -113,16 +114,13 @@ export function useOfflineTiles(): UseOfflineTilesReturn {
         estimatedTimeRemaining = Math.round((avgTimePerTile * remaining) / 1000) // seconds
       }
 
-      // Estimate bytes downloaded (20KB per tile)
-      const bytesDownloaded = downloaded * 20 * 1024
-
       downloadProgress.value = {
         ...downloadProgress.value,
         downloaded,
         failed,
         percentage,
         estimatedTimeRemaining,
-        bytesDownloaded,
+        bytesDownloaded: stats.bytesDownloaded,
       }
 
       if (onProgress) {

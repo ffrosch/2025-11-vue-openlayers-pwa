@@ -1,5 +1,8 @@
 import { get, set, del, keys } from 'idb-keyval'
-import type { TileCoord } from '@/types'
+import type { TileCoord, CompressionProfile } from '@/types'
+import { compressTileAuto } from './tileCompression'
+import { saveTileMetadata } from './tileMetadata'
+import { getDefaultProfile } from './compressionSettings'
 
 export interface TileStorageData {
   data: Blob | { type: string; size: number } // Blob or plain object for testing
@@ -7,7 +10,7 @@ export interface TileStorageData {
 }
 
 export interface DownloadProgressCallback {
-  (progress: { downloaded: number; failed: number; total: number }): void
+  (progress: { downloaded: number; failed: number; total: number; bytesDownloaded: number }): void
 }
 
 /**
@@ -33,15 +36,42 @@ export async function getTileFromStorage(tile: TileCoord): Promise<Blob | null> 
 
 /**
  * Save tile blob to IndexedDB storage
+ * Optionally compresses the tile using the specified profile
+ * Returns the size of the stored blob in bytes
  */
-export async function saveTileToStorage(tile: TileCoord, blob: Blob): Promise<void> {
+export async function saveTileToStorage(
+  tile: TileCoord,
+  blob: Blob,
+  compress: boolean = false,
+  profile?: CompressionProfile
+): Promise<number> {
   const key = `tile_${tile.z}_${tile.x}_${tile.y}`
+  let finalBlob = blob
+
+  // Compress if requested
+  if (compress) {
+    const compressionProfile = profile || (await getDefaultProfile())
+    const compressed = await compressTileAuto(blob, compressionProfile)
+    finalBlob = compressed.blob
+
+    // Save metadata
+    await saveTileMetadata(
+      tile,
+      compressed.format,
+      compressed.profile,
+      compressed.originalSize,
+      compressed.compressedSize,
+      compressed.compressionRatio
+    )
+  }
+
   const data: TileStorageData = {
-    data: blob,
+    data: finalBlob,
     storedAt: new Date().toISOString(),
   }
 
   await set(key, data)
+  return finalBlob.size
 }
 
 /**
@@ -158,28 +188,33 @@ export async function downloadTileWithRetry(
  * Download multiple tiles with progress tracking
  * Uses Promise.allSettled to handle failures gracefully
  * Includes retry logic with exponential backoff for failed downloads
+ * Optionally compresses tiles before storage
  */
 export async function downloadTiles(
   tiles: TileCoord[],
   urlTemplate: string,
-  onProgress?: DownloadProgressCallback
+  onProgress?: DownloadProgressCallback,
+  compress: boolean = true,
+  profile?: CompressionProfile
 ): Promise<void> {
   let downloaded = 0
   let failed = 0
+  let bytesDownloaded = 0
   const total = tiles.length
 
   const downloadPromises = tiles.map(async (tile) => {
     try {
       const blob = await downloadTileWithRetry(tile, urlTemplate)
-      await saveTileToStorage(tile, blob)
+      const size = await saveTileToStorage(tile, blob, compress, profile)
       downloaded++
+      bytesDownloaded += size
       if (onProgress) {
-        onProgress({ downloaded, failed, total })
+        onProgress({ downloaded, failed, total, bytesDownloaded })
       }
     } catch (error) {
       failed++
       if (onProgress) {
-        onProgress({ downloaded, failed, total })
+        onProgress({ downloaded, failed, total, bytesDownloaded })
       }
       // Don't rethrow - let other downloads continue
     }
