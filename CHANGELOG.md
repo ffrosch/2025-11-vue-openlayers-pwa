@@ -6,6 +6,42 @@ Chronological feature log for AI agent context. See [CLAUDE.md](CLAUDE.md) for t
 
 ## Implemented Features
 
+### 2025-10-02 - OfflineAreasManager as Modal ✅
+
+**UX Improvement:**
+- Converted route-based OfflineAreasView to modal overlay
+- Removed `/offline-areas` route from router
+- Modal opens instantly from FAB button on map
+- Backdrop click to close
+- Close button (×) in top-right corner
+- Map remains visible behind modal for context
+
+**Modal Implementation:**
+- Integrated into MapView.vue as conditional component
+- Includes StoragePersistenceIndicator and CompressionSettings inside modal
+- Max-width 900px, responsive design
+- Scrollable body for long lists
+- Z-index 3000 (above map elements)
+
+**View on Map Enhancement:**
+- Automatically zooms to area bounds with animation
+- Closes modal after zoom (smooth transition)
+- Uses OpenLayers `view.fit()` with padding
+
+**Code Changes:**
+- Deleted `src/views/OfflineAreasView.vue` (no longer needed)
+- Updated `MapView.vue` with modal state and handlers
+- Refactored `OfflineAreasManager.vue` for modal styling
+- Removed route from `router/index.ts`
+
+**Benefits:**
+- ✅ Faster UX - no route navigation
+- ✅ Better context - map visible behind modal
+- ✅ Cleaner architecture - one less route
+- ✅ Improved mobile experience
+
+---
+
 ### 2025-10-02 - Tile Compression Feature ✅
 
 **Phase 1: Core Compression Infrastructure**

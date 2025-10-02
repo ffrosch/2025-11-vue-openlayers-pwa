@@ -37,12 +37,12 @@ AI agent guidance for this Vue 3 + OpenLayers PWA codebase.
 
 ```typescript
 /                → HomeView.vue (landing page)
-/map             → MapView.vue (full-screen OpenLayers map)
-/offline-areas   → OfflineAreasView.vue (area management UI)
+/map             → MapView.vue (full-screen OpenLayers map + modal areas manager)
 ```
 
 - Uses `createWebHistory` for clean URLs
 - Respects `BASE_URL` for GitHub Pages compatibility
+- Areas manager is a modal overlay (not a route)
 - Navigation via `<RouterLink>`, not `<a>` tags
 
 ### Offline Tiles Architecture
@@ -148,8 +148,7 @@ src/
 │   └── HelloWorld.vue                  # Demo component
 ├── views/
 │   ├── HomeView.vue              # Landing page
-│   ├── MapView.vue               # Map + download workflow + areas button
-│   └── OfflineAreasView.vue      # Full-page area manager
+│   └── MapView.vue               # Map + download workflow + areas modal
 ├── router/index.ts               # Vue Router config (createWebHistory, BASE_URL)
 ├── utils/
 │   ├── platform.ts               # iOS version detection, PWA detection, eviction warning logic
@@ -421,8 +420,10 @@ OfflineAreasManager.vue
 9. User can toggle areas overlay (package icon FAB) to show/hide downloaded areas as striped red polygons
    - **Zoom filtering**: Only shows areas where current zoom level is ≤ area's maxZoom (minZoom ignored)
    - Example: Area downloaded at zoom 8 with 2 additional levels (maxZoom=10) appears when map zoom is ≤ 10 (hides at zoom 11+)
-10. User navigates to `/offline-areas` to manage downloaded areas
-11. Delete: confirmation dialog → remove tiles + metadata → free storage → refresh overlay
+10. User clicks areas manager button (grid icon FAB) to open modal overlay
+11. Modal shows: storage persistence indicator, compression settings, downloaded areas list
+12. User can view area on map (zooms to bounds, closes modal) or delete area
+13. Delete: confirmation dialog → remove tiles + metadata → free storage → refresh overlay
 
 ## Technical Notes
 

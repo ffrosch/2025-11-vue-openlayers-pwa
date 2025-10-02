@@ -1,16 +1,14 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
 import MapComponent from '@/components/MapComponent.vue'
 import DownloadButton from '@/components/DownloadButton.vue'
 import DownloadProgress from '@/components/DownloadProgress.vue'
 import StoragePersistenceIndicator from '@/components/StoragePersistenceIndicator.vue'
+import OfflineAreasManager from '@/components/OfflineAreasManager.vue'
 import type { MapConfig, BoundingBox } from '@/types'
 import { useOfflineTiles } from '@/composables/useOfflineTiles'
 import { useAreasOverlay } from '@/composables/useAreasOverlay'
 import type Map from 'ol/Map'
-
-const router = useRouter()
 
 // Baden-Württemberg coordinates: approximately 48.6616°N, 9.3501°E
 // Zoom level 8 provides a good overview of the state
@@ -23,6 +21,7 @@ const mapInstance = ref<Map | null>(null)
 const currentExtent = ref<BoundingBox | null>(null)
 const currentZoom = ref(mapConfig.zoom)
 const showProgress = ref(false)
+const showAreasModal = ref(false)
 
 const { downloadArea, downloadProgress, cancelDownload, getCurrentMapExtent } = useOfflineTiles()
 const { isVisible: areasVisible, initializeLayer, toggleVisibility, updateAreasForZoom, refreshAreas } = useAreasOverlay()
@@ -92,7 +91,28 @@ function handleCancelDownload() {
 }
 
 function openAreasManager() {
-  router.push({ name: 'offline-areas' })
+  showAreasModal.value = true
+}
+
+function closeAreasModal() {
+  showAreasModal.value = false
+}
+
+async function handleViewOnMap(bbox: { west: number; south: number; east: number; north: number }) {
+  // Zoom to the area bbox
+  if (mapInstance.value) {
+    const view = mapInstance.value.getView()
+    const extent = [bbox.west, bbox.south, bbox.east, bbox.north]
+    const transformedExtent = await import('ol/proj').then(({ transformExtent }) =>
+      transformExtent(extent, 'EPSG:4326', 'EPSG:3857')
+    )
+    view.fit(transformedExtent, {
+      duration: 500,
+      padding: [50, 50, 50, 50]
+    })
+  }
+  // Close modal
+  closeAreasModal()
 }
 </script>
 
@@ -142,6 +162,13 @@ function openAreasManager() {
       :progress="downloadProgress"
       :show="showProgress"
       @cancel="handleCancelDownload"
+    />
+
+    <!-- Areas Manager Modal -->
+    <OfflineAreasManager
+      v-if="showAreasModal"
+      @view-on-map="handleViewOnMap"
+      @close="closeAreasModal"
     />
   </div>
 </template>

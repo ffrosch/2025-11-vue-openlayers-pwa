@@ -3,6 +3,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useDownloadedAreas } from '@/composables/useDownloadedAreas'
 import { useStorageQuota } from '@/composables/useStorageQuota'
 import { formatBytes } from '@/utils/format'
+import StoragePersistenceIndicator from '@/components/StoragePersistenceIndicator.vue'
+import CompressionSettings from '@/components/CompressionSettings.vue'
 import type { DownloadedArea } from '@/types'
 
 const emit = defineEmits<{
@@ -103,128 +105,141 @@ async function handleDeleteCached() {
 </script>
 
 <template>
-  <div class="areas-manager">
-    <div class="header">
-      <h2>Downloaded Areas</h2>
-      <button @click="$emit('close')" class="close-button">&times;</button>
-    </div>
-
-    <div class="content">
-      <div v-if="areas.length === 0 && cachedTilesCount === 0" class="empty-state">
-        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-          <circle cx="12" cy="10" r="3"></circle>
-        </svg>
-        <p class="empty-title">No Downloaded Areas</p>
-        <p class="empty-text">Download map areas for offline use from the map view.</p>
+  <!-- Modal Overlay -->
+  <div class="modal-overlay" @click.self="$emit('close')">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Downloaded Areas</h2>
+        <button @click="$emit('close')" class="close-button" title="Close">&times;</button>
       </div>
 
-      <div v-else class="areas-list">
-        <!-- Cached Tiles Card -->
-        <div v-if="cachedTilesCount > 0" class="area-card cached-card">
-          <div class="area-header">
-            <div class="area-icon cached-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                <line x1="12" y1="9" x2="12" y2="13"></line>
-                <line x1="12" y1="17" x2="12.01" y2="17"></line>
-              </svg>
+      <div class="modal-body">
+        <!-- Storage Persistence Indicator -->
+        <div class="settings-section">
+          <StoragePersistenceIndicator />
+        </div>
+
+        <!-- Compression Settings -->
+        <div class="settings-section">
+          <CompressionSettings />
+        </div>
+
+        <!-- Areas Content -->
+        <div v-if="areas.length === 0 && cachedTilesCount === 0" class="empty-state">
+          <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+            <circle cx="12" cy="10" r="3"></circle>
+          </svg>
+          <p class="empty-title">No Downloaded Areas</p>
+          <p class="empty-text">Download map areas for offline use from the map view.</p>
+        </div>
+
+        <div v-else class="areas-list">
+          <!-- Cached Tiles Card -->
+          <div v-if="cachedTilesCount > 0" class="area-card cached-card">
+            <div class="area-header">
+              <div class="area-icon cached-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                  <line x1="12" y1="9" x2="12" y2="13"></line>
+                  <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+              </div>
+              <div class="area-title">
+                <h3>Cached Tiles</h3>
+                <p class="area-date">Tiles not associated with any area</p>
+              </div>
             </div>
-            <div class="area-title">
-              <h3>Cached Tiles</h3>
-              <p class="area-date">Tiles not associated with any area</p>
+
+            <div class="area-details">
+              <div class="detail-row">
+                <span class="detail-label">Tiles:</span>
+                <span class="detail-value">{{ cachedTilesCount.toLocaleString() }}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Estimated size:</span>
+                <span class="detail-value">{{ formatBytes(cachedTilesSize) }}</span>
+              </div>
+            </div>
+
+            <div class="area-actions">
+              <button @click="confirmDeleteCached" class="button button-danger full-width">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+                Clean Up Cached Tiles
+              </button>
             </div>
           </div>
-
-          <div class="area-details">
-            <div class="detail-row">
-              <span class="detail-label">Tiles:</span>
-              <span class="detail-value">{{ cachedTilesCount.toLocaleString() }}</span>
+          
+          <div v-for="area in areas" :key="area.id" class="area-card">
+            <div class="area-header">
+              <div class="area-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                  <circle cx="12" cy="10" r="3"></circle>
+                </svg>
+              </div>
+              <div class="area-title">
+                <h3>{{ area.name }}</h3>
+                <p class="area-date">{{ formatDate(area.downloadedAt) }}</p>
+              </div>
             </div>
-            <div class="detail-row">
-              <span class="detail-label">Estimated size:</span>
-              <span class="detail-value">{{ formatBytes(cachedTilesSize) }}</span>
-            </div>
-          </div>
 
-          <div class="area-actions">
-            <button @click="confirmDeleteCached" class="button button-danger full-width">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="3 6 5 6 21 6"></polyline>
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-              </svg>
-              Clean Up Cached Tiles
-            </button>
+            <div class="area-details">
+              <div class="detail-row">
+                <span class="detail-label">Zoom levels:</span>
+                <span class="detail-value">{{ area.minZoom }}-{{ area.maxZoom }} ({{ area.additionalZoomLevels + 1 }} levels)</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Tiles:</span>
+                <span class="detail-value">{{ area.tileCount.toLocaleString() }}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Size:</span>
+                <span class="detail-value">{{ formatBytes(area.sizeBytes) }}</span>
+              </div>
+            </div>
+
+            <div class="area-actions">
+              <button @click="handleViewOnMap(area)" class="button button-secondary">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
+                </svg>
+                View on Map
+              </button>
+              <button @click="confirmDelete(area)" class="button button-danger">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+                Delete
+              </button>
+            </div>
           </div>
         </div>
-        
-        <div v-for="area in areas" :key="area.id" class="area-card">
-          <div class="area-header">
-            <div class="area-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                <circle cx="12" cy="10" r="3"></circle>
-              </svg>
-            </div>
-            <div class="area-title">
-              <h3>{{ area.name }}</h3>
-              <p class="area-date">{{ formatDate(area.downloadedAt) }}</p>
-            </div>
-          </div>
 
-          <div class="area-details">
-            <div class="detail-row">
-              <span class="detail-label">Zoom levels:</span>
-              <span class="detail-value">{{ area.minZoom }}-{{ area.maxZoom }} ({{ area.additionalZoomLevels + 1 }} levels)</span>
+        <div v-if="areas.length > 0" class="modal-footer">
+          <div class="summary">
+            <div class="summary-item">
+              <span class="summary-label">Total Areas:</span>
+              <span class="summary-value">{{ areas.length }}</span>
             </div>
-            <div class="detail-row">
-              <span class="detail-label">Tiles:</span>
-              <span class="detail-value">{{ area.tileCount.toLocaleString() }}</span>
+            <div class="summary-item">
+              <span class="summary-label">Total Size:</span>
+              <span class="summary-value">{{ formatBytes(totalStorage) }}</span>
             </div>
-            <div class="detail-row">
-              <span class="detail-label">Size:</span>
-              <span class="detail-value">{{ formatBytes(area.sizeBytes) }}</span>
+            <div class="summary-item">
+              <span class="summary-label">Storage Used:</span>
+              <span class="summary-value">{{ storagePercentage }}%</span>
             </div>
-          </div>
-
-          <div class="area-actions">
-            <button @click="handleViewOnMap(area)" class="button button-secondary">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
-              </svg>
-              View on Map
-            </button>
-            <button @click="confirmDelete(area)" class="button button-danger">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="3 6 5 6 21 6"></polyline>
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-              </svg>
-              Delete
-            </button>
           </div>
         </div>
       </div>
-    </div>
 
-    <div v-if="areas.length > 0" class="footer">
-      <div class="summary">
-        <div class="summary-item">
-          <span class="summary-label">Total Areas:</span>
-          <span class="summary-value">{{ areas.length }}</span>
-        </div>
-        <div class="summary-item">
-          <span class="summary-label">Total Size:</span>
-          <span class="summary-value">{{ formatBytes(totalStorage) }}</span>
-        </div>
-        <div class="summary-item">
-          <span class="summary-label">Storage Used:</span>
-          <span class="summary-value">{{ storagePercentage }}%</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Delete Confirmation Dialog -->
-    <div v-if="showDeleteConfirm" class="dialog-overlay" @click.self="cancelDelete">
+      <!-- Delete Confirmation Dialog -->
+      <div v-if="showDeleteConfirm" class="dialog-overlay" @click.self="cancelDelete">
       <div class="dialog-content">
         <div class="dialog-header">
           <h3>Delete Area?</h3>
@@ -244,8 +259,8 @@ async function handleDeleteCached() {
       </div>
     </div>
 
-    <!-- Delete Cached Tiles Confirmation Dialog -->
-    <div v-if="showDeleteCachedConfirm" class="dialog-overlay" @click.self="cancelDeleteCached">
+      <!-- Delete Cached Tiles Confirmation Dialog -->
+      <div v-if="showDeleteCachedConfirm" class="dialog-overlay" @click.self="cancelDeleteCached">
       <div class="dialog-content">
         <div class="dialog-header">
           <h3>Clean Up Cached Tiles?</h3>
@@ -265,26 +280,47 @@ async function handleDeleteCached() {
         </div>
       </div>
     </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.areas-manager {
+/* Modal Overlay */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
   display: flex;
-  flex-direction: column;
-  height: 100%;
-  background: white;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+  padding: 20px;
 }
 
-.header {
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  max-width: 900px;
+  width: 100%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 25px rgba(0, 0, 0, 0.15);
+}
+
+.modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px;
+  padding: 24px;
   border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
 }
 
-.header h2 {
+.modal-header h2 {
   margin: 0;
   font-size: 1.5rem;
   font-weight: 600;
@@ -299,18 +335,31 @@ async function handleDeleteCached() {
   cursor: pointer;
   color: #6b7280;
   padding: 0;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
 }
 
 .close-button:hover {
   color: #374151;
+  background-color: #f3f4f6;
 }
 
-.content {
+.modal-body {
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.settings-section {
+  margin-bottom: 0;
 }
 
 .empty-state {
@@ -472,10 +521,12 @@ async function handleDeleteCached() {
   width: 100%;
 }
 
-.footer {
+.modal-footer {
   border-top: 1px solid #e5e7eb;
-  padding: 20px;
+  padding: 20px 24px;
   background: #f9fafb;
+  flex-shrink: 0;
+  border-radius: 0 0 12px 12px;
 }
 
 .summary {
