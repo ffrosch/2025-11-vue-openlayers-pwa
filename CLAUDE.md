@@ -8,7 +8,7 @@ AI agent guidance for this Vue 3 + OpenLayers PWA codebase.
 **Stack:** Vue 3 + TypeScript + Vite + Bun + Tailwind CSS 4 + PWA
 **Deploy:** GitHub Pages @ `/2025-11-vue-openlayers-pwa/`
 **Alias:** `@/` → `/src`
-**Tests:** 116 passing (8 setup + 52 core + 24 download + 20 areas + 1 optimization + 11 overlay)
+**Tests:** 167 passing (8 setup + 52 core + 24 download + 20 areas + 1 optimization + 11 overlay + 51 compression)
 
 ## Architecture
 
@@ -47,15 +47,20 @@ AI agent guidance for this Vue 3 + OpenLayers PWA codebase.
 
 ### Offline Tiles Architecture
 
-**Storage Model:** IndexedDB with two object stores:
-- `tiles` - key: `tile_${z}_${x}_${y}`, value: Blob (~20KB PNG from OSM)
+**Storage Model:** IndexedDB with four object stores:
+- `tiles` - key: `tile_${z}_${x}_${y}`, value: Blob (compressed WebP/JPEG, originally ~20KB PNG from OSM)
 - `metadata` - key: `area_${uuid}`, value: DownloadedArea object
+- `tile_meta_*` - key: `tile_meta_${z}_${x}_${y}`, value: TileMetadata (compression stats)
+- `compression_settings` - key: `compression_settings`, value: CompressionSettings
 
 **Component Stack:**
 
 1. **Services Layer**
    - `tileCalculator.ts` - Web Mercator (EPSG:3857) coordinate math
-   - `tileDownloader.ts` - Fetch + IndexedDB CRUD + retry logic
+   - `tileDownloader.ts` - Fetch + IndexedDB CRUD + retry logic + compression integration
+   - `tileCompression.ts` - WebP/JPEG compression using Canvas API (auto-detect format)
+   - `compressionSettings.ts` - User compression preferences (high/balanced/aggressive)
+   - `tileMetadata.ts` - Per-tile compression statistics tracking
 
 2. **Composables Layer**
    - `useOfflineTiles.ts` - Download orchestration, progress tracking, cancellation
@@ -68,6 +73,7 @@ AI agent guidance for this Vue 3 + OpenLayers PWA codebase.
    - `DownloadButton.vue` - FAB + dialog (extent, zoom slider, estimates, validation)
    - `DownloadProgress.vue` - Overlay (circular progress, stats, ETA, cancel)
    - `OfflineAreasManager.vue` - List view (cards, view/delete, confirmation)
+   - `CompressionSettings.vue` - Compression quality settings (high/balanced/aggressive)
 
 **Tile Loading Flow:**
 
@@ -88,6 +94,11 @@ AI agent guidance for this Vue 3 + OpenLayers PWA codebase.
 - **Progress** - `(downloaded + failed) / total × 100`
 - **ETA** - `remaining / (downloaded / elapsedSeconds) × 1000`
 - **Quota check** - Validate storage before download, request persistence on first download
+- **Compression** - Auto-compress tiles during download (enabled by default)
+  - Format: WebP (auto-detect support, fallback to JPEG)
+  - Profile: User-selectable (high/balanced/aggressive)
+  - Storage savings: 50-80% depending on profile
+  - Metadata: Track format, profile, sizes, ratios per tile
 
 **Storage Quotas by Platform:**
 
@@ -122,13 +133,17 @@ src/
 │   └── useAreasOverlay.ts        # initializeLayer, toggleVisibility, updateAreasForZoom, refreshAreas, cleanup
 ├── services/
 │   ├── tileCalculator.ts         # lonLatToTile, getTilesInExtent, calculateDownloadList, estimateDownloadSize
-│   └── tileDownloader.ts         # downloadTileWithRetry, downloadTiles, getTileFromStorage, saveTileToStorage, deleteTileFromStorage
+│   ├── tileDownloader.ts         # downloadTileWithRetry, downloadTiles, getTileFromStorage, saveTileToStorage, deleteTileFromStorage
+│   ├── tileCompression.ts        # compressTile, compressTileAsJPEG, compressTileAsWebP, compressTileAuto, detectWebPSupport
+│   ├── compressionSettings.ts    # getCompressionSettings, setDefaultProfile, getDefaultProfile, resetCompressionSettings
+│   └── tileMetadata.ts           # saveTileMetadata, getTileMetadata, deleteTileMetadata, getCompressionStats
 ├── components/
 │   ├── MapComponent.vue                # OpenLayers integration + offlineTileLoader, emits: mapReady, moveEnd
 │   ├── DownloadButton.vue              # FAB + dialog (extent, zoom slider, real-time quota display)
 │   ├── DownloadProgress.vue            # Overlay (circular %, tiles downloaded/total, speed, ETA, cancel/close)
 │   ├── OfflineAreasManager.vue         # List cards (name, date, zoom, size, view/delete), confirmation dialog
 │   ├── StoragePersistenceIndicator.vue # Persistence status, eviction warnings, quota info, request button
+│   ├── CompressionSettings.vue         # Compression quality selector (high/balanced/aggressive)
 │   ├── PWABadge.vue                    # Update notification UI (reload/close)
 │   └── HelloWorld.vue                  # Demo component
 ├── views/
@@ -149,9 +164,9 @@ tests/
 ├── helpers/
 │   ├── mockTiles.ts              # Mock data generators (tiles, blobs, bboxes, areas)
 │   └── indexedDBHelpers.ts       # DB utilities (cleanup, counting, waiting)
-├── setup.ts                      # Global setup (IndexedDB cleanup, navigator.storage mocks)
+├── setup.ts                      # Global setup (IndexedDB cleanup, navigator.storage mocks, canvas polyfills)
 └── unit/
-    ├── services/                 # tileCalculator (22 tests), tileDownloader (24 tests)
+    ├── services/                 # tileCalculator (22), tileDownloader (24), tileCompression (31), compressionSettings (8), tileMetadata (12)
     ├── composables/              # useStorageQuota (7), useOfflineTiles (14), useDownloadedAreas (14), useAreasOverlay (11)
     ├── utils/                    # format (9 tests)
     └── components/               # Component tests
@@ -186,16 +201,69 @@ downloadTileWithRetry(tile: TileCoord, urlTemplate: string, maxRetries=3, baseDe
   // Smart retry: skip 4xx (except 429), retry 5xx/429/network
   // Throws after max retries
 
-downloadTiles(tiles: TileCoord[], urlTemplate: string, onProgress: Function, onCancel?: Ref<boolean>): Promise<void>
+downloadTiles(tiles: TileCoord[], urlTemplate: string, onProgress: Function, compress=true, profile?: CompressionProfile): Promise<void>
   // Batch download (6 concurrent), Promise.allSettled for graceful failure
   // Track failed tiles, update progress after each batch
   // Check onCancel flag between batches
+  // Auto-compress tiles during download using user-selected profile
 
 getTileFromStorage(tile: TileCoord): Promise<Blob | null>
-saveTileToStorage(tile: TileCoord, blob: Blob): Promise<void>
+saveTileToStorage(tile: TileCoord, blob: Blob, compress=false, profile?: CompressionProfile): Promise<void>
 deleteTileFromStorage(tile: TileCoord): Promise<void>
 getAllStoredTileKeys(): Promise<string[]>
   // IndexedDB CRUD operations for tiles
+```
+
+### Tile Compression (`tileCompression.ts`)
+
+```typescript
+detectWebPSupport(): Promise<boolean>
+  // Test canvas.toBlob() capability for WebP format
+
+detectBestCompressionFormat(): Promise<CompressionFormat>
+  // Returns 'webp' if supported, otherwise 'jpeg'
+
+compressTile(blob: Blob, format: CompressionFormat, profile: CompressionProfile): Promise<CompressedTile>
+  // Blob → Image → Canvas → Compressed Blob (WebP/JPEG)
+  // Returns: { blob, format, profile, originalSize, compressedSize, compressionRatio }
+
+compressTileAsJPEG(blob: Blob, profile: CompressionProfile): Promise<CompressedTile>
+compressTileAsWebP(blob: Blob, profile: CompressionProfile): Promise<CompressedTile>
+  // Format-specific compression helpers
+
+compressTileAuto(blob: Blob, profile: CompressionProfile): Promise<CompressedTile>
+  // Auto-detect best format and compress
+
+COMPRESSION_PROFILES: Record<CompressionProfile, CompressionProfileConfig>
+  // high:       { quality: 0.92, targetCompressionRatio: 0.5 }
+  // balanced:   { quality: 0.85, targetCompressionRatio: 0.7 }
+  // aggressive: { quality: 0.75, targetCompressionRatio: 0.8 }
+```
+
+### Compression Settings (`compressionSettings.ts`)
+
+```typescript
+getCompressionSettings(): Promise<CompressionSettings>
+  // Returns: { defaultProfile: 'balanced', cacheProfile: 'high' }
+
+setDefaultProfile(profile: CompressionProfile): Promise<void>
+  // Update user's preferred compression quality
+
+resetCompressionSettings(): Promise<void>
+  // Reset to defaults (balanced quality)
+```
+
+### Tile Metadata (`tileMetadata.ts`)
+
+```typescript
+saveTileMetadata(tile: TileCoord, format, profile, originalSize, compressedSize, compressionRatio): Promise<void>
+  // Store compression stats for a tile
+
+getTileMetadata(tile: TileCoord): Promise<TileMetadata | null>
+  // Retrieve compression stats for a tile
+
+getCompressionStats(tiles: TileCoord[]): Promise<{ totalOriginalSize, totalCompressedSize, averageCompressionRatio, tilesWithMetadata }>
+  // Calculate aggregate compression statistics for multiple tiles
 ```
 
 ### Storage Quota (`useStorageQuota.ts`)
