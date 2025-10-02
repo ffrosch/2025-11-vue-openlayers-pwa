@@ -92,7 +92,7 @@ function startDownload() {
     <div v-if="showDialog" class="dialog-overlay" @click.self="closeDialog">
       <div class="dialog-content">
         <div class="dialog-header">
-          <h2>Download Map for Offline Use</h2>
+          <h2 class="text-slate-900">Download Map for Offline Use</h2>
           <button @click="closeDialog" class="close-button">&times;</button>
         </div>
 
@@ -104,7 +104,7 @@ function startDownload() {
               v-model="areaName"
               type="text"
               placeholder="Enter area name"
-              class="text-input"
+              class="text-input text-slate-900"
             />
           </div>
 
