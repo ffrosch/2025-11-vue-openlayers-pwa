@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import type { BoundingBox } from '@/types'
 import { useOfflineTiles } from '@/composables/useOfflineTiles'
+import { useStorageQuota } from '@/composables/useStorageQuota'
+import { formatBytes } from '@/utils/format'
 
 interface Props {
   currentExtent: BoundingBox | null
@@ -19,6 +21,7 @@ const areaName = ref('')
 const additionalZoomLevels = ref(2)
 
 const { calculateDownloadEstimate } = useOfflineTiles()
+const { storageInfo, updateStorageInfo } = useStorageQuota()
 
 const estimate = computed(() => {
   if (!props.currentExtent) return null
@@ -30,22 +33,29 @@ const estimatedSizeMB = computed(() => {
   return (estimate.value.estimatedSizeBytes / (1024 * 1024)).toFixed(2)
 })
 
-const isPlatformIOS = computed(() => {
-  return /iPad|iPhone|iPod/.test(navigator.userAgent)
+const estimatedSizeBytes = computed(() => {
+  return estimate.value?.estimatedSizeBytes || 0
 })
 
-const showIOSWarning = computed(() => {
-  return isPlatformIOS.value && additionalZoomLevels.value > 3
+const hasEnoughStorage = computed(() => {
+  return storageInfo.value.available >= estimatedSizeBytes.value
 })
 
-const showTileCountWarning = computed(() => {
-  if (!estimate.value) return false
-  const limit = isPlatformIOS.value ? 2000 : 10000
-  return estimate.value.tileCount > limit
+const storageWarning = computed(() => {
+  if (!estimate.value) return null
+  if (!hasEnoughStorage.value) {
+    const requiredMB = (estimatedSizeBytes.value / (1024 * 1024)).toFixed(2)
+    const availableMB = (storageInfo.value.available / (1024 * 1024)).toFixed(2)
+    return `Insufficient storage: need ${requiredMB} MB, only ${availableMB} MB available`
+  }
+  return null
 })
 
-function openDialog() {
+async function openDialog() {
   if (!props.currentExtent) return
+
+  // Update storage info when dialog opens
+  await updateStorageInfo()
 
   // Auto-fill area name with date/location
   const date = new Date().toLocaleDateString()
@@ -53,6 +63,10 @@ function openDialog() {
 
   showDialog.value = true
 }
+
+onMounted(() => {
+  updateStorageInfo()
+})
 
 function closeDialog() {
   showDialog.value = false
@@ -128,12 +142,8 @@ function startDownload() {
             />
           </div>
 
-          <div v-if="showIOSWarning" class="warning ios-warning">
-            ⚠️ iOS: More than 3 zoom levels may cause storage issues
-          </div>
-
-          <div v-if="showTileCountWarning" class="warning tile-warning">
-            ⚠️ {{ estimate?.tileCount }} tiles exceeds recommended limit
+          <div v-if="storageWarning" class="warning storage-warning">
+            ⚠️ {{ storageWarning }}
           </div>
 
           <div class="stats">
@@ -145,6 +155,18 @@ function startDownload() {
               <span class="stat-label">Estimated size:</span>
               <span class="stat-value">{{ estimatedSizeMB }} MB</span>
             </div>
+            <div class="stat-item">
+              <span class="stat-label">Available storage:</span>
+              <span class="stat-value">{{ formatBytes(storageInfo.available) }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Total quota:</span>
+              <span class="stat-value">{{ formatBytes(storageInfo.quota) }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Currently used:</span>
+              <span class="stat-value">{{ formatBytes(storageInfo.usage) }} ({{ storageInfo.percentUsed.toFixed(1) }}%)</span>
+            </div>
           </div>
         </div>
 
@@ -153,7 +175,7 @@ function startDownload() {
           <button
             @click="startDownload"
             class="button button-primary"
-            :disabled="!areaName || showTileCountWarning"
+            :disabled="!areaName || !hasEnoughStorage"
           >
             Start Download
           </button>
@@ -317,13 +339,7 @@ function startDownload() {
   font-size: 0.875rem;
 }
 
-.ios-warning {
-  background-color: #fef3c7;
-  color: #92400e;
-  border: 1px solid #fde68a;
-}
-
-.tile-warning {
+.storage-warning {
   background-color: #fee2e2;
   color: #991b1b;
   border: 1px solid #fecaca;

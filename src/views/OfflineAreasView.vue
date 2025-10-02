@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import OfflineAreasManager from '@/components/OfflineAreasManager.vue'
+import StoragePersistenceIndicator from '@/components/StoragePersistenceIndicator.vue'
 
 const router = useRouter()
 
@@ -24,7 +25,12 @@ function handleClose() {
 
 <template>
   <div class="offline-areas-view">
-    <OfflineAreasManager @view-on-map="handleViewOnMap" @close="handleClose" />
+    <div class="areas-container">
+      <div class="persistence-section">
+        <StoragePersistenceIndicator />
+      </div>
+      <OfflineAreasManager @view-on-map="handleViewOnMap" @close="handleClose" />
+    </div>
   </div>
 </template>
 
@@ -37,5 +43,17 @@ function handleClose() {
   height: 100vh;
   margin: 0;
   padding: 0;
+  overflow-y: auto;
+  background: #f9fafb;
+}
+
+.areas-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.persistence-section {
+  margin-bottom: 1.5rem;
 }
 </style>

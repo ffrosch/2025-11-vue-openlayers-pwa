@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import MapComponent from '@/components/MapComponent.vue'
 import DownloadButton from '@/components/DownloadButton.vue'
 import DownloadProgress from '@/components/DownloadProgress.vue'
+import StoragePersistenceIndicator from '@/components/StoragePersistenceIndicator.vue'
 import type { MapConfig, BoundingBox } from '@/types'
 import { useOfflineTiles } from '@/composables/useOfflineTiles'
 import type Map from 'ol/Map'
@@ -101,6 +102,11 @@ function openAreasManager() {
       </svg>
     </button>
 
+    <!-- Storage Persistence Indicator -->
+    <div class="persistence-panel">
+      <StoragePersistenceIndicator />
+    </div>
+
     <DownloadProgress
       :progress="downloadProgress"
       :show="showProgress"
@@ -142,5 +148,21 @@ function openAreasManager() {
 .areas-fab:hover {
   background-color: #059669;
   box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+}
+
+.persistence-panel {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  max-width: 400px;
+  z-index: 1000;
+}
+
+@media (max-width: 640px) {
+  .persistence-panel {
+    left: 10px;
+    right: 10px;
+    max-width: none;
+  }
 }
 </style>
