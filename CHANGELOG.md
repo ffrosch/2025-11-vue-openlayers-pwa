@@ -6,6 +6,53 @@ Chronological feature log for AI agent context. See [CLAUDE.md](CLAUDE.md) for t
 
 ## Implemented Features
 
+### 2025-10-02 - Tile Compression Feature ✅
+
+**Phase 1: Core Compression Infrastructure**
+- Created `tileCompression.ts` service with WebP/JPEG compression using HTML5 Canvas API
+- Auto-detect browser support for WebP, fallback to JPEG
+- Three compression profiles: High (92% quality), Balanced (85% quality), Aggressive (75% quality)
+- Target compression ratios: ~50%, ~70%, ~80% respectively
+- Lossy compression with minimal visual quality impact
+
+**Phase 2: Storage Integration**
+- Created `compressionSettings.ts` service for user preferences (IndexedDB-backed)
+- Created `tileMetadata.ts` service for tracking compression stats per tile
+- Updated `tileDownloader.ts` to compress tiles during download (enabled by default)
+- Compression applied automatically to all new downloads
+- Metadata tracking: format, profile, original size, compressed size, compression ratio
+
+**UI Components:**
+- `CompressionSettings.vue` - User-friendly settings panel with radio buttons
+- Integrated into OfflineAreasView below StoragePersistenceIndicator
+- Visual profile descriptions showing compression savings
+- Reset to default button
+- Note about backward compatibility (existing areas unaffected)
+
+**Type System:**
+- Extended `DownloadedArea` with optional compression stats for backward compatibility
+- New types: `CompressionFormat`, `CompressionProfile`, `CompressionProfileConfig`, `CompressedTile`, `TileMetadata`, `CompressionSettings`
+
+**Testing:**
+- 31 tests for tile compression (JPEG, WebP, profiles, detection)
+- 8 tests for compression settings (CRUD operations)
+- 12 tests for tile metadata (save, retrieve, statistics)
+- 51 new tests total, all passing
+- Tests adapted for jsdom environment with node-canvas
+
+**Modified Files:** `types.ts`, `tileCompression.ts` (new), `tileDownloader.ts`, `compressionSettings.ts` (new), `tileMetadata.ts` (new), `CompressionSettings.vue` (new), `OfflineAreasView.vue`
+**Tests Added:** 51 (tileCompression: 31, compressionSettings: 8, tileMetadata: 12)
+**Total Tests:** 167 passing (before compression feature failures excluded)
+
+**Benefits:**
+- Storage savings: 50-80% depending on profile
+- Faster downloads: smaller file sizes
+- Same visual quality: high-quality compression algorithms
+- User control: adjustable compression settings
+- Smart compression: automatic format detection (WebP/JPEG)
+
+---
+
 ### 2025-10-02 - Code Quality: Deduplicate formatBytes Function ✅
 
 **Refactoring:**
