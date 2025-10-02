@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { DownloadProgress } from '@/types'
+import { formatBytes } from '@/utils/format'
 
 interface Props {
   progress: DownloadProgress
@@ -19,14 +20,6 @@ const formatTime = (seconds: number | undefined): string => {
   const minutes = Math.floor(seconds / 60)
   const secs = seconds % 60
   return `${minutes}m ${secs}s`
-}
-
-const formatBytes = (bytes: number): string => {
-  if (bytes === 0) return '0 Bytes'
-  const k = 1024
-  const sizes = ['Bytes', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`
 }
 
 const downloadSpeed = computed(() => {

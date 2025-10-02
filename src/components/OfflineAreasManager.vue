@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useDownloadedAreas } from '@/composables/useDownloadedAreas'
 import { useStorageQuota } from '@/composables/useStorageQuota'
+import { formatBytes } from '@/utils/format'
 import type { DownloadedArea } from '@/types'
 
 const emit = defineEmits<{
@@ -10,7 +11,7 @@ const emit = defineEmits<{
 }>()
 
 const { getAllAreas, deleteArea, getTotalStorageUsed, getOrphanedTiles, deleteOrphanedTiles } = useDownloadedAreas()
-const { storageInfo, updateStorageInfo, formatBytes } = useStorageQuota()
+const { storageInfo, updateStorageInfo } = useStorageQuota()
 
 const areas = ref<DownloadedArea[]>([])
 const totalStorage = ref(0)
