@@ -123,10 +123,10 @@ export function useDownloadedAreas(): UseDownloadedAreasReturn {
     // Find orphaned tiles (tiles that exist but aren't in any area)
     const orphanedKeys = allTileKeys.filter(key => !associatedTileKeys.has(key))
 
-    console.log(allTileKeys)
-    console.log(areas)
-    console.log(associatedTileKeys)
-    console.log(orphanedKeys)
+    // console.log(allTileKeys)
+    // console.log(areas)
+    // console.log(associatedTileKeys)
+    // console.log(cachedKeys)
 
     // Estimate size (20KB per tile)
     const estimatedSizeBytes = orphanedKeys.length * 20 * 1024
