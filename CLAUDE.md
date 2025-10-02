@@ -88,18 +88,27 @@ AI agent guidance for this Vue 3 + OpenLayers PWA codebase.
 - **ETA** - `remaining / (downloaded / elapsedSeconds) × 1000`
 - **Quota check** - Validate storage before download, request persistence on first download
 
-**Platform Limits:**
+**Storage Quotas by Platform:**
 
-| Platform | Tile Limit | Zoom Levels | Storage Quota | Notes |
-|----------|-----------|-------------|---------------|-------|
-| iOS Safari | 2000 | 3 recommended | 500MB-1GB IndexedDB | 7-day eviction without persistence |
-| Android Chrome | 10000 | flexible | 33% free disk | No eviction policy |
-| Desktop | 10000 | flexible | 6-8% disk space | Hundreds of GB possible |
+| Platform | Storage Quota | Eviction Policy | Persistent Storage Support |
+|----------|---------------|-----------------|---------------------------|
+| iOS Safari 17+ | Up to 60% of disk (browser), 80% (browser app) | 7-day eviction (without persistence or PWA install) | ✅ Yes (`navigator.storage.persist()`) |
+| iOS Safari <17 | 500MB-1GB IndexedDB | 7-day eviction (exempt if installed as PWA) | ❌ No |
+| Chrome/Android | Up to 60% of disk | No eviction with persistence | ✅ Yes (auto-granted after user interaction) |
+| Firefox | Up to 50% of disk (persistent), 10% (best-effort) | Eviction only under storage pressure | ✅ Yes |
+| Desktop Chrome/Edge | Up to 60% of disk | No eviction with persistence | ✅ Yes |
 
-**Storage Quotas:**
-- iOS: Request persistence on first download to prevent 7-day eviction
-- Check quota before download using `navigator.storage.estimate()`
-- Show descriptive error when quota exceeded (required vs available MB)
+**iOS Eviction Details:**
+- **iOS 17+ with persistence**: No 7-day eviction, data protected
+- **iOS 17+ without persistence**: 7-day eviction after last user interaction with site
+- **Installed PWA** (any iOS version): Exempt from 7-day eviction
+- **iOS <17**: No `navigator.storage.persist()` support, must install as PWA for persistence
+
+**Implementation:**
+- Use `navigator.storage.estimate()` for real-time quota checks (not arbitrary tile limits)
+- Request persistence on first download via `navigator.storage.persist()`
+- Display eviction warnings based on iOS version + PWA status + persistence status
+- Show actual available storage to users, not arbitrary limits
 
 ## File Structure
 
@@ -113,17 +122,21 @@ src/
 │   ├── tileCalculator.ts         # lonLatToTile, getTilesInExtent, calculateDownloadList, estimateDownloadSize
 │   └── tileDownloader.ts         # downloadTileWithRetry, downloadTiles, getTileFromStorage, saveTileToStorage, deleteTileFromStorage
 ├── components/
-│   ├── MapComponent.vue          # OpenLayers integration + offlineTileLoader, emits: mapReady, moveEnd
-│   ├── DownloadButton.vue        # FAB + dialog (extent, zoom slider, tile/size estimates, platform warnings)
-│   ├── DownloadProgress.vue      # Overlay (circular %, tiles downloaded/total, speed, ETA, cancel/close)
-│   ├── OfflineAreasManager.vue   # List cards (name, date, zoom, size, view/delete), confirmation dialog, summary footer
-│   ├── PWABadge.vue              # Update notification UI (reload/close)
-│   └── HelloWorld.vue            # Demo component
+│   ├── MapComponent.vue                # OpenLayers integration + offlineTileLoader, emits: mapReady, moveEnd
+│   ├── DownloadButton.vue              # FAB + dialog (extent, zoom slider, real-time quota display)
+│   ├── DownloadProgress.vue            # Overlay (circular %, tiles downloaded/total, speed, ETA, cancel/close)
+│   ├── OfflineAreasManager.vue         # List cards (name, date, zoom, size, view/delete), confirmation dialog
+│   ├── StoragePersistenceIndicator.vue # Persistence status, eviction warnings, quota info, request button
+│   ├── PWABadge.vue                    # Update notification UI (reload/close)
+│   └── HelloWorld.vue                  # Demo component
 ├── views/
 │   ├── HomeView.vue              # Landing page
 │   ├── MapView.vue               # Map + download workflow + areas button
 │   └── OfflineAreasView.vue      # Full-page area manager
 ├── router/index.ts               # Vue Router config (createWebHistory, BASE_URL)
+├── utils/
+│   ├── platform.ts               # iOS version detection, PWA detection, eviction warning logic
+│   └── format.ts                 # formatBytes - human-readable byte formatting
 ├── types.ts                      # TileCoord, BoundingBox, DownloadedArea, DownloadProgress, StorageQuota, MapConfig
 ├── App.vue                       # Root component (<RouterView/>)
 ├── main.ts                       # Entry point (router integration)
@@ -137,7 +150,8 @@ tests/
 ├── setup.ts                      # Global setup (IndexedDB cleanup, navigator.storage mocks)
 └── unit/
     ├── services/                 # tileCalculator (22 tests), tileDownloader (24 tests)
-    ├── composables/              # useStorageQuota (13), useOfflineTiles (14), useDownloadedAreas (14)
+    ├── composables/              # useStorageQuota (7), useOfflineTiles (14), useDownloadedAreas (14)
+    ├── utils/                    # format (9 tests)
     └── components/               # Component tests
 ```
 
@@ -191,11 +205,16 @@ updateStorageInfo(): Promise<StorageQuota>
 requestPersistence(): Promise<boolean>
   // navigator.storage.persist() - prevent iOS 7-day eviction
 
-formatBytes(bytes: number): string
-  // Human-readable: B, KB, MB, GB
-
 isStorageSupported: ComputedRef<boolean>
   // Check navigator.storage API availability
+```
+
+### Format Utilities (`utils/format.ts`)
+
+```typescript
+formatBytes(bytes: number): string
+  // Convert bytes to human-readable format (Bytes, KB, MB, GB, TB)
+  // Example: 1048576 → "1 MB"
 ```
 
 ### Area Management (`useDownloadedAreas.ts`)

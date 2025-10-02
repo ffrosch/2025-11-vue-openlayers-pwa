@@ -6,6 +6,71 @@ Chronological feature log for AI agent context. See [CLAUDE.md](CLAUDE.md) for t
 
 ## Implemented Features
 
+### 2025-10-02 - Code Quality: Deduplicate formatBytes Function ✅
+
+**Refactoring:**
+- Moved `formatBytes()` from `useStorageQuota.ts` and `DownloadProgress.vue` to shared `utils/format.ts`
+- Updated all consumers to import from `@/utils/format` instead of composable
+- Removed `formatBytes` from `useStorageQuota` interface and return value
+
+**Updated Imports:**
+- `DownloadButton.vue` - Import from `@/utils/format`
+- `DownloadProgress.vue` - Import from `@/utils/format`
+- `StoragePersistenceIndicator.vue` - Import from `@/utils/format`
+- `OfflineAreasManager.vue` - Import from `@/utils/format`
+
+**Tests:**
+- Moved `formatBytes` tests from `useStorageQuota.test.ts` to new `format.test.ts`
+- 9 tests for byte formatting (0 Bytes, KB, MB, GB, TB, edge cases)
+- `useStorageQuota` tests reduced from 13 to 7
+
+**Modified Files:** `utils/format.ts` (new), `useStorageQuota.ts`, `DownloadProgress.vue`, `DownloadButton.vue`, `StoragePersistenceIndicator.vue`, `OfflineAreasManager.vue`, `format.test.ts` (new), `useStorageQuota.test.ts`
+
+---
+
+### 2025-10-02 - Storage Quota & Persistence Improvements ✅
+
+**Removed Arbitrary Limits:**
+- Removed hardcoded 2000/10000 tile limits - now uses actual storage quota from `navigator.storage.estimate()`
+- Removed arbitrary "3 zoom levels recommended" warning for iOS
+- Replaced platform-specific tile count warnings with real-time storage availability checks
+
+**Real-Time Storage Display:**
+- DownloadButton.vue now shows actual available storage, total quota, and current usage
+- Dynamic storage validation: disable download only when insufficient storage (not arbitrary limits)
+- Live storage info updates when dialog opens
+
+**Platform Detection Utilities:**
+- Created `utils/platform.ts` with iOS version detection, PWA installation detection
+- `getIOSVersion()` - Parse iOS version from user agent
+- `isIOSVersion17OrHigher()` - Check for Safari Storage API support
+- `isPWA()` - Detect if app is installed as PWA (iOS standalone mode or display-mode)
+- `getPlatformInfo()` - Comprehensive platform information
+- `getIOSEvictionWarning()` - Context-aware eviction warnings based on iOS version, PWA status, persistence
+
+**StoragePersistenceIndicator Component:**
+- Collapsible panel showing persistence status with color-coded badges (success/info/warning)
+- iOS-specific eviction warnings:
+  - iOS 17+ without persistence: "Data may be deleted after 7 days..."
+  - iOS <17: "Consider adding app to home screen..."
+  - No warning if persistent or installed as PWA
+- Live storage quota display (used, available, total)
+- "Request Persistent Storage" button when applicable
+- Platform-specific explanations (iOS 17+, iOS <17, PWA, Android, Desktop)
+- Integrated into MapView (top-left panel) and OfflineAreasView
+
+**Corrected Storage Facts:**
+- iOS Safari 17+: Up to 60% of disk, supports `navigator.storage.persist()`
+- iOS Safari <17: 500MB-1GB, no persist API, PWA installation bypasses 7-day eviction
+- Chrome/Android: Up to 60% of disk (not 33%), no eviction with persistence
+- Persistent storage protects iOS 17+ from 7-day eviction
+- Installed PWAs exempt from eviction on all iOS versions
+
+**Modified Files:** `DownloadButton.vue`, `utils/platform.ts`, `StoragePersistenceIndicator.vue`, `MapView.vue`, `OfflineAreasView.vue`, `useStorageQuota.ts`, `CLAUDE.md`
+**Tests Status:** Existing tests still passing, new utility functions added (tests pending)
+
+---
+
 ### 2025-10-01 - Phase 4: Mobile Optimization ✅
 
 **Persistent Storage:**
@@ -215,12 +280,6 @@ Chronological feature log for AI agent context. See [CLAUDE.md](CLAUDE.md) for t
 ---
 
 ## Planned Features
-
-### UI/UX: Usage of persistent storage indicator
-- show the user whether the data is stored persistently or not
-- if the data is not stored persistently:
-  - show a warning
-  - show a button to request persistent storage
 
 ### Downloaded areas highlight
 - a button to toggle the display of downloaded areas (e.g. a polygon with subtle fill)
