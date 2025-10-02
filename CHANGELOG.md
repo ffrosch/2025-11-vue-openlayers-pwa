@@ -216,6 +216,23 @@ Chronological feature log for AI agent context. See [CLAUDE.md](CLAUDE.md) for t
 
 ## Planned Features
 
+### UI/UX: Usage of persistent storage indicator
+- show the user whether the data is stored persistently or not
+- if the data is not stored persistently:
+  - show a warning
+  - show a button to request persistent storage
+
+### Downloaded areas highlight
+- a button to toggle the display of downloaded areas (e.g. a polygon with subtle fill)
+- show the correct area on each zoom level
+
+### Downloaded Tiles
+- download each tile only once -> if multiple downloaded areas overlap, share tiles
+- on area delete only delete tiles that are not shared
+
+### Download area selection
+- the user has to select a rectangular region for which the tiles should be downloaded (add the necessary functionality)
+
 ### Pause/Resume Downloads
 - IndexedDB download queue for interrupted downloads
 - Save progress for resume capability
