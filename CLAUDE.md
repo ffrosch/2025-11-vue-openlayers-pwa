@@ -8,7 +8,7 @@ AI agent guidance for this Vue 3 + OpenLayers PWA codebase.
 **Stack:** Vue 3 + TypeScript + Vite + Bun + Tailwind CSS 4 + PWA
 **Deploy:** GitHub Pages @ `/2025-11-vue-openlayers-pwa/`
 **Alias:** `@/` → `/src`
-**Tests:** 96 passing (8 setup + 52 core + 14 download + 14 areas + 8 optimization)
+**Tests:** 116 passing (8 setup + 52 core + 24 download + 20 areas + 1 optimization + 11 overlay)
 
 ## Architecture
 
@@ -61,6 +61,7 @@ AI agent guidance for this Vue 3 + OpenLayers PWA codebase.
    - `useOfflineTiles.ts` - Download orchestration, progress tracking, cancellation
    - `useDownloadedAreas.ts` - Area metadata CRUD, bulk deletion
    - `useStorageQuota.ts` - Storage API queries, persistence requests
+   - `useAreasOverlay.ts` - Vector layer management, area visualization, toggle visibility
 
 3. **UI Layer**
    - `MapComponent.vue` - Custom tile loader (IndexedDB → network → placeholder)
@@ -117,7 +118,8 @@ src/
 ├── composables/
 │   ├── useOfflineTiles.ts        # downloadArea, cancelDownload, calculateDownloadEstimate, getCurrentMapExtent
 │   ├── useStorageQuota.ts        # updateStorageInfo, requestPersistence, formatBytes, isStorageSupported
-│   └── useDownloadedAreas.ts     # saveAreaMetadata, getAllAreas, getAreaById, deleteArea, getTotalStorageUsed
+│   ├── useDownloadedAreas.ts     # saveAreaMetadata, getAllAreas, getAreaById, deleteArea, getTotalStorageUsed
+│   └── useAreasOverlay.ts        # initializeLayer, toggleVisibility, updateAreasForZoom, refreshAreas, cleanup
 ├── services/
 │   ├── tileCalculator.ts         # lonLatToTile, getTilesInExtent, calculateDownloadList, estimateDownloadSize
 │   └── tileDownloader.ts         # downloadTileWithRetry, downloadTiles, getTileFromStorage, saveTileToStorage, deleteTileFromStorage
@@ -150,7 +152,7 @@ tests/
 ├── setup.ts                      # Global setup (IndexedDB cleanup, navigator.storage mocks)
 └── unit/
     ├── services/                 # tileCalculator (22 tests), tileDownloader (24 tests)
-    ├── composables/              # useStorageQuota (7), useOfflineTiles (14), useDownloadedAreas (14)
+    ├── composables/              # useStorageQuota (7), useOfflineTiles (14), useDownloadedAreas (14), useAreasOverlay (11)
     ├── utils/                    # format (9 tests)
     └── components/               # Component tests
 ```
@@ -255,6 +257,32 @@ getCurrentMapExtent(map: Map): BoundingBox
   // Get current viewport bounds in lon/lat
 ```
 
+### Areas Overlay (`useAreasOverlay.ts`)
+
+```typescript
+initializeLayer(map: Map): Promise<void>
+  // 1. Create vector layer with striped red polygon style (diagonal pattern)
+  // 2. Load all downloaded areas from IndexedDB
+  // 3. Add polygon features to layer (bbox corners → Web Mercator)
+  // 4. Layer starts hidden (setVisible false)
+
+toggleVisibility(): void
+  // Toggle isVisible ref and layer visibility
+
+updateAreasForZoom(zoom: number | null): Promise<void>
+  // Filter and display only areas where zoom <= maxZoom (minZoom ignored)
+  // Called automatically when map zoom changes
+  // If zoom is null, shows all areas
+
+refreshAreas(): Promise<void>
+  // Reload areas from IndexedDB, clear and repopulate layer
+  // Called after successful download or area deletion
+  // Respects current zoom filter
+
+cleanup(): void
+  // Clear all features from vector layer source
+```
+
 ## Code Style Guidelines
 
 - **ES modules** - `import`/`export`, destructure when possible
@@ -282,6 +310,8 @@ MapView.vue
   ├─→ DownloadButton.vue
   │     └─→ useOfflineTiles.calculateDownloadEstimate()
   ├─→ DownloadProgress.vue
+  ├─→ useAreasOverlay.{initializeLayer, toggleVisibility, updateAreasForZoom, refreshAreas}()
+  │     └─→ updateAreasForZoom() called on zoom change (handleMoveEnd)
   └─→ useOfflineTiles.downloadArea()
         ├─→ useStorageQuota.updateStorageInfo()
         ├─→ useStorageQuota.requestPersistence()
@@ -304,6 +334,7 @@ OfflineAreasManager.vue
 - **Modify area management** → Edit `useDownloadedAreas.ts` + `OfflineAreasManager.vue`
 - **Change storage logic** → Edit `useStorageQuota.ts` + update IndexedDB schema
 - **Update map behavior** → Edit `MapComponent.vue` (offlineTileLoader function)
+- **Modify areas overlay** → Edit `useAreasOverlay.ts` + `MapView.vue`
 - **Add new route** → Edit `router/index.ts` + create view in `views/`
 - **Change tile calculations** → Edit `tileCalculator.ts` (Web Mercator math)
 - **Run all tests** → `bun test:run`
@@ -319,13 +350,20 @@ OfflineAreasManager.vue
 6. User clicks "Download Area"
 7. Progress overlay: circular %, tiles downloaded/total, speed (tiles/sec), ETA
 8. On completion: area metadata saved, notification, map works offline
-9. User navigates to `/offline-areas` to manage downloaded areas
-10. Delete: confirmation dialog → remove tiles + metadata → free storage
+9. User can toggle areas overlay (package icon FAB) to show/hide downloaded areas as striped red polygons
+   - **Zoom filtering**: Only shows areas where current zoom level is ≤ area's maxZoom (minZoom ignored)
+   - Example: Area downloaded at zoom 8 with 2 additional levels (maxZoom=10) appears when map zoom is ≤ 10 (hides at zoom 11+)
+10. User navigates to `/offline-areas` to manage downloaded areas
+11. Delete: confirmation dialog → remove tiles + metadata → free storage → refresh overlay
 
 ## Technical Notes
 
 - **IndexedDB best practices** - Store Blobs directly (no Base64), meaningful keys, revoke object URLs after use, don't index binary fields
 - **Map projection** - Web Mercator (EPSG:3857), use `fromLonLat()` for [lon, lat] conversion
+- **Vector layers** - Use `map.getLayers().push()` instead of `map.addLayer()` for TypeScript compatibility
+- **Zoom-based filtering** - Areas overlay filters by `zoom <= maxZoom` (minZoom ignored), updates automatically on map zoom change
+- **Canvas patterns** - Striped overlay uses HTML5 Canvas API for diagonal pattern; gracefully falls back to solid color if canvas unavailable
 - **Test database** - fake-indexeddb provides real IndexedDB implementation (not mocks) for accurate testing
+- **OpenLayers tests** - Mock `ResizeObserver` globally when testing components that create Map instances
 - **Service worker** - Auto-updates hourly, configured in `PWABadge.vue`, manifest in `vite.config.ts`
 - **GitHub Pages** - Base path `/2025-11-vue-openlayers-pwa/` configured in `vite.config.ts`

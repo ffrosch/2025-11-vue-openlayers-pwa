@@ -279,11 +279,35 @@ Chronological feature log for AI agent context. See [CLAUDE.md](CLAUDE.md) for t
 
 ---
 
-## Planned Features
+## 2025-10-02 - Areas Overlay Feature (Striped Red, maxZoom Filter)
 
-### Downloaded areas highlight
-- a button to toggle the display of downloaded areas (e.g. a polygon with subtle fill)
-- show the correct area on each zoom level
+### Downloaded Areas Visualization
+- **New composable** - `useAreasOverlay.ts` for managing OpenLayers vector layer
+- **Toggle button** - FAB in MapView to show/hide downloaded areas as striped red polygons
+- **Striped pattern** - Diagonal red stripes created with Canvas API for subtle visual effect
+- **Zoom-based filtering** - Areas only visible when current zoom level ≤ maxZoom (minZoom ignored)
+  - Example: Area downloaded at zoom 8 with 2 additional levels (maxZoom=10) appears when map zoom is ≤ 10
+  - Hides when zooming in beyond maxZoom
+  - Automatically updates on zoom change via `handleMoveEnd` event
+- **Auto-refresh** - Overlay updates after downloads and deletions
+- **Layer management** - Polygons rendered from bbox corners in Web Mercator projection
+- **11 tests** - Full coverage for overlay composable including maxZoom-only filtering (updated tests)
+- **UI integration** - Active state styling (gray → blue) when overlay visible
+
+### Technical Details
+- Vector layer with `zIndex: 100` to render above base map tiles
+- Striped fill pattern using Canvas (10x10px diagonal lines, red-500 at 40% opacity)
+- Red stroke (`rgba(239, 68, 68, 0.6)`) with 2px width
+- Falls back to solid red fill if Canvas unavailable
+- Uses `fromLonLat()` for coordinate conversion (WGS84 → EPSG:3857)
+- Layer initialized on map ready, starts hidden by default
+- Zoom filtering: `zoom <= area.maxZoom` (shows areas only at or below their downloaded detail level)
+- ResizeObserver mock added for OpenLayers Map testing
+- Uses `readonly()` instead of type assertion for ref exports
+
+---
+
+## Planned Features
 
 ### Downloaded Tiles
 - download each tile only once -> if multiple downloaded areas overlap, share tiles
