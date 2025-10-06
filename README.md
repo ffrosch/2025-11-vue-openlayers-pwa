@@ -94,8 +94,15 @@ Add the `@` alias to `tsconfig.app.json`
   }
 }
 ```
-<!-- 
+
 Add fonts and tailwind as well as your basic theme to `src/style.css`
+
+
+```css
+@import "tailwindcss";
+```
+
+<!-- 
 
 ```css
 @import url("https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600&display=swap");
